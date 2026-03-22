@@ -24,6 +24,8 @@
 
 **Goal:** React app scaffolded with routing, design system, auth flows, i18n, and PWA manifest.
 
+**Use Stitch mcp  to design all the desgn for front end profesionaly**
+
 **Plans:**
 1. **2.1 — Vite + React + Tailwind Scaffold** — Initialize Vite project, install Tailwind v3, configure fonts (Inter), routing (React Router v6), Zustand store, React Hook Form + Zod
 2. **2.2 — Design System + Layout** — Create global CSS design tokens (colors from prompt spec), header/nav component, footer, responsive layout, emergency-optimized UX (large touch targets, high contrast)
