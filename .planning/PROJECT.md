@@ -12,7 +12,14 @@ Lives saved through early AI-driven warnings and fast, frictionless access to em
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Supabase backend: PostgreSQL with PostGIS, JWT auth (OTP + magic link), Realtime subscriptions, Row Level Security, Storage (Validated in Phase 1)
+- [x] PostGIS: Supabase PostGIS extension active for spatial queries (Validated in Phase 1)
+- [x] Frontend Scaffold: React 18 + Vite + Tailwind CSS v3 with premium glassmorphism design (Validated in Phase 2)
+- [x] Auth Flows: Phone OTP + Magic Link integrated with Supabase (Validated in Phase 2)
+- [x] i18n: English, Hindi, and Hinglish support with real-time toggle (Validated in Phase 2)
+- [x] PWA: Offline manifest and service worker registration (Validated in Phase 2)
+- [x] Vercel deployment with CI/CD (Config documented in Phase 1)
+- [x] Safe zone directory (tables and seed data in Phase 1)
 
 ### Active
 
