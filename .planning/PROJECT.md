@@ -8,6 +8,16 @@ ResQ AI is a production-ready, AI-powered disaster prediction and response platf
 
 Lives saved through early AI-driven warnings and fast, frictionless access to emergency help and safe zones — before and during a disaster.
 
+## Current Milestone: v1.1 Quality, UI/UX & Interactivity Overhaul
+
+**Goal:** Re-evaluate, optimize, and polish all existing code; redesign every page with professional UI/UX via Stitch; wire up all interactive elements to be fully functional and reactive; overhaul map integration with richer features.
+
+**Target features:**
+- Code audit & optimization across all phases (1-6)
+- Professional UI/UX redesign of all pages using Stitch MCP
+- Full interactivity — every button, form, and click wired to its purpose
+- Map integration overhaul — better features, clustering, routing, real-time updates
+
 ## Requirements
 
 ### Validated
