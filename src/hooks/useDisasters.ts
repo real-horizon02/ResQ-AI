@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import type { DisasterEventRow } from '../types'
 
 export interface DisasterEvent {
   id: string
@@ -42,8 +43,8 @@ export function useDisasters() {
 
         setDisasters(formattedData)
         setLastUpdated(new Date())
-      } catch (err: any) {
-        setError(err.message)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to load disasters')
       } finally {
         setLoading(false)
       }
@@ -61,7 +62,7 @@ export function useDisasters() {
       }, (payload) => {
         setLastUpdated(new Date())
         if (payload.eventType === 'INSERT') {
-          const newEvent = payload.new as any
+          const newEvent = payload.new as DisasterEventRow
           const formatted = {
             ...newEvent,
             coordinates: newEvent.location ? {
@@ -73,7 +74,7 @@ export function useDisasters() {
         } else if (payload.eventType === 'DELETE') {
           setDisasters((prev) => prev.filter(d => d.id !== payload.old.id))
         } else if (payload.eventType === 'UPDATE') {
-          const updated = payload.new as any
+          const updated = payload.new as DisasterEventRow
           const formatted = {
             ...updated,
             coordinates: updated.location ? {

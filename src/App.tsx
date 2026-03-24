@@ -9,26 +9,32 @@ import AdminDashboard from './pages/AdminDashboard'
 import VolunteerDashboard from './pages/VolunteerDashboard'
 import { useAuth } from './hooks/useAuth'
 import SOSButton from './components/sos/SOSButton'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { ToastProvider } from './components/ui/Toast'
 
 function App() {
   // Initialize auth listener
   useAuth()
 
   return (
-    <Router>
-      <Layout>
-        <SOSButton />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/profile-setup" element={<ProfileSetup />} />
-          <Route path="/report" element={<ReportPage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/volunteer" element={<VolunteerDashboard />} />
-        </Routes>
-      </Layout>
-    </Router>
+    <ToastProvider>
+      <ErrorBoundary>
+        <Router>
+          <Layout>
+            <SOSButton />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/map" element={<MapPage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/profile-setup" element={<ProfileSetup />} />
+              <Route path="/report" element={<ReportPage />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/volunteer" element={<VolunteerDashboard />} />
+            </Routes>
+          </Layout>
+        </Router>
+      </ErrorBoundary>
+    </ToastProvider>
   )
 }
 

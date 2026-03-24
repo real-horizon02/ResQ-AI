@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/useAuthStore'
+import '../types' // import for global Navigator type augmentations
 
 export function useSOS() {
   const { user } = useAuthStore()
@@ -24,7 +25,7 @@ export function useSOS() {
         user_id: user.id,
         location: `POINT(${lng} ${lat})`,
         status: 'active',
-        battery_level: (navigator as any).getBattery ? await (navigator as any).getBattery().then((b: any) => Math.round(b.level * 100)) : null
+        battery_level: navigator.getBattery ? await navigator.getBattery().then((b) => Math.round(b.level * 100)) : null
       }).select().single()
 
       if (error) throw error
@@ -36,7 +37,7 @@ export function useSOS() {
         payload: {
           id: data.id,
           user_id: user.id,
-          userName: (user as any).full_name || 'Anonymous User',
+          userName: user.user_metadata?.full_name as string || 'Anonymous User',
           location: { lat, lng },
           timestamp: new Date().toISOString()
         }
@@ -44,9 +45,12 @@ export function useSOS() {
 
       setIsSOSActive(true)
       return true
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('SOS Trigger Error:', err)
-      alert('Failed to trigger SOS. Call emergency services immediately!')
+      // SOS failure is critical — fallback to prompt is intentional
+      if (typeof window !== 'undefined') {
+        window.alert('Failed to trigger SOS. Call emergency services: 112')
+      }
       return false
     } finally {
       setLoading(false)

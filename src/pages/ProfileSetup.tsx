@@ -3,9 +3,11 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/useAuthStore'
 import { Button } from '../components/ui/Button'
 import { User, Mail, Shield, Bell, Check } from 'lucide-react'
+import { useToast } from '../components/ui/Toast'
 
 export default function ProfileSetup() {
   const { user, profile, fetchProfile } = useAuthStore()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [isVolunteer, setIsVolunteer] = useState(profile?.is_volunteer || false)
   const [skills, setSkills] = useState<string[]>(profile?.skills || [])
@@ -27,7 +29,7 @@ export default function ProfileSetup() {
 
     if (!error) {
       await fetchProfile()
-      alert('Profile updated successfully!')
+      toast('success', 'Profile updated successfully!')
     }
     setLoading(false)
   }

@@ -28,7 +28,7 @@ function LocateButton() {
     map.on('locationfound', () => setLocating(false))
     map.on('locationerror', () => {
       setLocating(false)
-      alert("Location access denied or unavailable.")
+      console.warn("Location access denied or unavailable.")
     })
   }
 

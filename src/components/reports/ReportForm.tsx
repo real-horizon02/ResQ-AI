@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore'
 import { Button } from '../ui/Button'
 import { MapPin, Camera, AlertTriangle, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { outbox } from '../../lib/outbox'
+import { useToast } from '../ui/Toast'
 
 const REPORT_TYPES = [
   { id: 'flood', label: 'Flood / बाढ़', icon: '🌊' },
@@ -15,6 +16,7 @@ const REPORT_TYPES = [
 
 export default function ReportForm() {
   const { user } = useAuthStore()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [type, setType] = useState('')
@@ -35,7 +37,7 @@ export default function ReportForm() {
       }, (error) => {
         console.error("Error getting location:", error)
         setLocating(false)
-        alert("Please enable location permissions to report an incident.")
+        toast('error', 'Please enable location permissions to report an incident.')
       })
     }
   }
@@ -52,13 +54,13 @@ export default function ReportForm() {
         description,
         severity,
         location: `POINT(${location.lng} ${location.lat})`,
-        status: 'pending'
+        status: 'pending' as const
       }
 
       if (!navigator.onLine) {
         await outbox.saveReport(reportData)
         setSuccess(true)
-        alert('Offline: Report saved locally. It will sync automatically when connection is restored.')
+        toast('info', 'Offline: Report saved locally. It will sync automatically when connection is restored.')
         return
       }
 
@@ -66,8 +68,8 @@ export default function ReportForm() {
 
       if (error) throw error
       setSuccess(true)
-    } catch (err: any) {
-      alert(`Reporting failed: ${err.message}`)
+    } catch (err: unknown) {
+      toast('error', `Reporting failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }

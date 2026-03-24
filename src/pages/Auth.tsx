@@ -34,8 +34,8 @@ export default function AuthPage() {
         if (error) throw error
         setMessage({ type: 'success', text: 'Magic link sent! Check your email.' })
       }
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Sign-in failed' })
     } finally {
       setLoading(false)
     }
@@ -54,8 +54,8 @@ export default function AuthPage() {
       })
       if (error) throw error
       // Redirect or state change will be handled by useAuth hook
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message })
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Verification failed' })
     } finally {
       setLoading(false)
     }

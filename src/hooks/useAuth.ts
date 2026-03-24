@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/useAuthStore'
+import type { Profile } from '../types'
 
 export function useAuth() {
   const { setAuth, setLoading } = useAuthStore()

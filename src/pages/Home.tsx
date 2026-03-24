@@ -1,13 +1,16 @@
-import { AlertTriangle, Map, Shield, Users, WifiOff } from 'lucide-react'
+import { AlertTriangle, Map, Shield, Users, WifiOff, Activity, Heart } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useConnectionStatus } from '../hooks/useConnectionStatus'
 import { Alert, AlertDescription } from '../components/ui/Alert'
+import { useDashboardStats } from '../hooks/useDashboardStats'
+import { StatSkeleton } from '../components/ui/Skeleton'
 
 export default function Home() {
   const { t } = useTranslation()
   const { isOnline, isSlow } = useConnectionStatus()
+  const { stats, loading: statsLoading } = useDashboardStats()
 
   return (
     <div className="space-y-6">
@@ -33,9 +36,11 @@ export default function Home() {
           {t('home.hero_subtitle')}
         </p>
         <div className="flex flex-wrap gap-4">
-          <Button variant="emergency" size="lg">
-            {t('common.get_help')}
-          </Button>
+          <Link to="/map?layer=safezones">
+            <Button variant="emergency" size="lg">
+              {t('common.get_help')}
+            </Button>
+          </Link>
           <Link to="/map">
             <Button variant="outline" size="lg">
               {t('nav.map')}
@@ -48,21 +53,34 @@ export default function Home() {
       <div className="glass-card p-6 flex flex-col justify-between">
         <div className="flex items-center justify-between border-b pb-4">
           <h3 className="font-semibold text-brand-dark">{t('home.active_disasters')}</h3>
-          <span className="bg-brand-red/10 text-brand-red px-2 py-1 rounded text-xs font-bold uppercase">6 LIVE</span>
+          <span className="bg-brand-red/10 text-brand-red px-2 py-1 rounded text-xs font-bold uppercase">
+            {statsLoading ? '...' : `${stats.activeDisasters} LIVE`}
+          </span>
         </div>
         <div className="py-4 space-y-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">{t('home.verified_volunteers')}</span>
-            <span className="font-bold">1,248</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">{t('home.sos_resolved')}</span>
-            <span className="font-bold">89%</span>
-          </div>
+          {statsLoading ? (
+            <>
+              <StatSkeleton />
+              <StatSkeleton />
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">{t('home.verified_volunteers')}</span>
+                <span className="font-bold">{stats.verifiedVolunteers.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">{t('home.sos_resolved')}</span>
+                <span className="font-bold">{stats.sosResolvedRate}%</span>
+              </div>
+            </>
+          )}
         </div>
-        <Button variant="secondary" className="w-full">
-          {t('common.volunteer')}
-        </Button>
+        <Link to="/volunteer">
+          <Button variant="secondary" className="w-full">
+            {t('common.volunteer')}
+          </Button>
+        </Link>
       </div>
 
       {/* Feature Grid Item 1 */}
@@ -77,7 +95,7 @@ export default function Home() {
       </Link>
 
       {/* Feature Grid Item 2 */}
-      <div className="glass-card p-6 flex items-start gap-4 hover:shadow-2xl transition-shadow cursor-pointer">
+      <Link to="/map?layer=safezones" className="glass-card p-6 flex items-start gap-4 hover:shadow-2xl transition-shadow cursor-pointer">
         <div className="bg-brand-green/10 p-3 rounded-xl">
           <Shield className="w-6 h-6 text-brand-green" />
         </div>
@@ -85,10 +103,10 @@ export default function Home() {
           <h4 className="font-bold">{t('nav.safe_zones')}</h4>
           <p className="text-xs text-gray-500 mt-1">Locate surgical hospitals, shelters, and relief camps near you.</p>
         </div>
-      </div>
+      </Link>
 
       {/* Feature Grid Item 3 */}
-      <div className="glass-card p-6 flex items-start gap-4 hover:shadow-2xl transition-shadow cursor-pointer">
+      <Link to="/report" className="glass-card p-6 flex items-start gap-4 hover:shadow-2xl transition-shadow cursor-pointer">
         <div className="bg-brand-orange/10 p-3 rounded-xl">
           <Users className="w-6 h-6 text-brand-orange" />
         </div>
@@ -96,7 +114,7 @@ export default function Home() {
           <h4 className="font-bold">{t('nav.reports')}</h4>
           <p className="text-xs text-gray-500 mt-1">Contribute to live incident reporting and verification.</p>
         </div>
-      </div>
+      </Link>
       </div>
     </div>
   )

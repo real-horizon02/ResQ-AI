@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/Button'
 import { Shield, AlertCircle, CheckCircle, XCircle, Clock, Map as MapIcon, ChevronRight, ShieldAlert } from 'lucide-react'
+import type { SOSAlertRow } from '../types'
+import { useToast } from '../components/ui/Toast'
+import { parseWKTPoint } from '../lib/geo'
 
 interface CitizenReport {
   id: string
@@ -18,7 +21,7 @@ interface SOSAlert {
   user_id: string
   location: { lat: number; lng: number }
   status: string
-  battery_level?: number
+  battery_level?: number | null
   created_at: string
 }
 
@@ -26,6 +29,7 @@ export default function AdminDashboard() {
   const [reports, setReports] = useState<CitizenReport[]>([])
   const [sosAlerts, setSosAlerts] = useState<SOSAlert[]>([])
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchReports()
@@ -76,11 +80,9 @@ export default function AdminDashboard() {
       .order('created_at', { ascending: false })
 
     if (!error && data) {
-      // PostGIS Point to {lat, lng} conversion would happen here or via RPC
-      // For now we map the simplified version
-      setSosAlerts(data.map((d: any) => ({
+      setSosAlerts(data.map((d: SOSAlertRow) => ({
         ...d,
-        location: { lat: 0, lng: 0 } // Placeholder for coordinates parsing
+        location: parseWKTPoint(d.location) || { lat: 0, lng: 0 }
       })))
     }
     setLoading(false)
@@ -92,7 +94,7 @@ export default function AdminDashboard() {
       .update({ status: newStatus })
       .eq('id', id)
     
-    if (error) alert(`Error updating status: ${error.message}`)
+    if (error) toast('error', `Error updating status: ${error.message}`)
   }
 
   const resolveSOS = async (id: string) => {

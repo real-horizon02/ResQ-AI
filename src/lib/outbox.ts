@@ -1,11 +1,12 @@
 import { openDB, IDBPDatabase } from 'idb'
+import type { ReportData } from '../types'
 
 const DB_NAME = 'resq-ai-outbox'
 const STORE_NAME = 'reports'
 
 export interface OfflineReport {
   id?: number
-  data: any
+  data: ReportData
   timestamp: string
   synced: boolean
 }
@@ -21,7 +22,7 @@ if (typeof window !== 'undefined') {
 }
 
 export const outbox = {
-  async saveReport(reportData: any) {
+  async saveReport(reportData: ReportData) {
     const db = await dbPromise
     return db.add(STORE_NAME, {
       data: reportData,

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../store/useAuthStore'
 import { Button } from '../components/ui/Button'
 import { Shield, MapPin, Search, CheckCircle, Clock, AlertTriangle } from 'lucide-react'
+import { useToast } from '../components/ui/Toast'
 
 interface Task {
   id: string
@@ -18,6 +19,7 @@ export default function VolunteerDashboard() {
   const { user } = useAuthStore()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchTasks()
@@ -56,7 +58,7 @@ export default function VolunteerDashboard() {
       })
       .eq('id', id)
     
-    if (error) alert('Error claiming task: ' + error.message)
+    if (error) toast('error', 'Error claiming task: ' + error.message)
   }
 
   const completeTask = async (id: string) => {
@@ -65,7 +67,7 @@ export default function VolunteerDashboard() {
       .update({ status: 'completed' })
       .eq('id', id)
     
-    if (error) alert('Error completing task: ' + error.message)
+    if (error) toast('error', 'Error completing task: ' + error.message)
   }
 
   return (
