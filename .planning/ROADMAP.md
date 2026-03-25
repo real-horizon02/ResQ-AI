@@ -129,10 +129,19 @@
 **Goal:** Complete cinematic UI/UX overhaul — dark glassmorphic design system, 7 fully-built pages (/, /map, /sos, /volunteer, /admin, /auth, /profile), 12-animation global system (custom cursor, page transitions, text reveal, Lenis smooth scroll, parallax, magnetic buttons, data shimmer, staggered grids, number counters, infinite marquee, line draw, image reveal), responsive design, mock data integration.
 **Requirements**: UI-01 through UI-07 (all 7 pages), ANIM-01 through ANIM-12 (all animations), COMP-01 through COMP-03 (global components)
 **Depends on:** Phase 2 (frontend foundation, routing, auth)
-**Plans:** 0 plans
+**Plans:** 10 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 9 to break down)
+- [ ] 01-PLAN-design-system — CSS vars, fonts, Tailwind config, keyframes (Wave 1)
+- [ ] 02-PLAN-global-components — Cursor, PageTransition, Toast, FloatingSOS, OfflineBanner, animation hooks (Wave 2)
+- [ ] 03-PLAN-mock-data-store — 10 incidents, 6 volunteers, Zustand stores (Wave 2)
+- [ ] 04-PLAN-home-page — Navbar + 8 sections (Wave 3)
+- [ ] 05-PLAN-map-page — Dark Leaflet map + sidebar + popups (Wave 3)
+- [ ] 06-PLAN-sos-page — 3-step emergency form + geolocation + success (Wave 4)
+- [ ] 07-PLAN-volunteer-page — Task feed + profile panel + filter (Wave 4)
+- [ ] 08-PLAN-admin-page — KPI cards + incident table + live feed + donuts (Wave 5)
+- [ ] 09-PLAN-auth-profile-pages — Split-screen auth + 3-step profile (Wave 5)
+- [ ] 10-PLAN-responsive-polish — Mobile CSS + cross-page wiring + build check (Wave 6)
 
 
 ---
