@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useLenis } from './hooks/useLenis';
 import { CustomCursor } from './components/ui/CustomCursor';
 import { PageTransition } from './components/ui/PageTransition';
@@ -15,7 +15,6 @@ import ProfilePage from './pages/Profile';
 
 function AppInner() {
   useLenis();
-  const location = useLocation();
 
   return (
     <>
@@ -23,8 +22,8 @@ function AppInner() {
       <OfflineBanner />
       <FloatingSOS />
       <ToastContainer />
-      <PageTransition key={location.pathname}>
-        <Routes location={location}>
+      <PageTransition>
+        <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/sos" element={<SOSPage />} />
