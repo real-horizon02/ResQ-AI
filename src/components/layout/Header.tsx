@@ -1,84 +1,160 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../../store/useAuthStore'
 import { Button } from '../ui/Button'
-import { Bell, Menu, X } from 'lucide-react'
-import { Logo } from '../ui/Logo'
-import { Link, useNavigate } from 'react-router-dom'
+import { Shield, Menu, X, MapPin, FileText, User, LogOut, ChevronRight, Zap, LayoutDashboard } from 'lucide-react'
+import { useState } from 'react'
 
-export function Header() {
-  const [isOpen, setIsOpen] = useState(false)
-  const { t, i18n } = useTranslation()
+export default function Header() {
+  const { user, profile, signOut } = useAuthStore()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  const toggleLanguage = () => {
-    const langs = ['en', 'hi', 'hinglish']
-    const nextIdx = (langs.indexOf(i18n.language) + 1) % langs.length
-    i18n.changeLanguage(langs[nextIdx])
-  }
+  const isActive = (path: string) => location.pathname === path
 
-  const getLangLabel = () => {
-    switch (i18n.language) {
-      case 'hi': return 'हिन्दी'
-      case 'hinglish': return 'Hing'
-      default: return 'EN'
-    }
-  }
+  const navItems = [
+    { path: '/', label: 'Dashboard', icon: Zap },
+    { path: '/map', label: 'Live Map', icon: MapPin },
+    { path: '/report', label: 'Report', icon: FileText },
+  ]
+
+  const dashboardPath = profile?.role === 'admin' ? '/admin' : profile?.role === 'volunteer' ? '/volunteer' : null
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <Logo className="w-8 h-8" />
-          <span className="text-xl font-bold tracking-tight text-brand-dark">{t('common.app_name')}</span>
-        </Link>
-
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link to="/map" className="text-sm font-medium hover:text-brand-red transition-colors">{t('nav.map')}</Link>
-          <Link to="#" className="text-sm font-medium hover:text-brand-red transition-colors">{t('nav.safe_zones')}</Link>
-          <Link to="/report" className="text-sm font-medium text-brand-red font-bold hover:opacity-80 transition-opacity">Report Incident</Link>
-          <Link to="#" className="text-sm font-medium hover:text-brand-red transition-colors">{t('nav.reports')}</Link>
-          <Link to="#" className="text-sm font-medium hover:text-brand-red transition-colors">{t('common.volunteer')}</Link>
-        </nav>
-
-        <div className="hidden md:flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={toggleLanguage} className="font-bold w-12 text-xs">
-            {getLangLabel()}
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Bell className="w-5 h-5" />
-          </Button>
-          <Button variant="emergency" size="sm">
-            {t('common.sos')}
-          </Button>
-          <Link to="/auth">
-            <Button variant="default" size="sm">
-              {t('common.sign_in')}
-            </Button>
+    <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl ghost-border border-b">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="p-1.5 bg-urgency-gradient rounded-lg shadow-sm group-hover:shadow-emergency transition-shadow">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-lg font-black text-sentinel-on-surface tracking-tight">
+              ResQ<span className="text-brand-red"> AI</span>
+            </span>
           </Link>
-        </div>
 
-        {/* Mobile Menu Toggle */}
-        <button 
-          className="md:hidden p-2"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? <X /> : <Menu />}
-        </button>
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navItems.map(item => {
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                    isActive(item.path)
+                      ? 'bg-brand-red/10 text-brand-red'
+                      : 'text-sentinel-on-surface-variant hover:text-sentinel-on-surface hover:bg-surface-container'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+            {dashboardPath && (
+              <Link
+                to={dashboardPath}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                  isActive(dashboardPath)
+                    ? 'bg-brand-blue/10 text-brand-blue'
+                    : 'text-sentinel-on-surface-variant hover:text-sentinel-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                {profile?.role === 'admin' ? 'Command Center' : 'My Tasks'}
+              </Link>
+            )}
+          </nav>
+
+          {/* Right Section */}
+          <div className="hidden md:flex items-center gap-3">
+            {user ? (
+              <div className="flex items-center gap-3">
+                <Link to="/profile-setup">
+                  <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-sentinel-on-surface-variant hover:text-sentinel-on-surface hover:bg-surface-container transition-all">
+                    <User className="w-4 h-4" />
+                    Profile
+                  </button>
+                </Link>
+                <button
+                  onClick={() => { signOut(); navigate('/') }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-sentinel-on-surface-variant hover:text-brand-red hover:bg-red-50 transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <Link to="/auth">
+                <Button size="sm" className="rounded-xl font-bold bg-brand-red hover:bg-brand-red/90 px-5">
+                  Sign In
+                </Button>
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile Toggle */}
+          <button
+            className="md:hidden p-2 rounded-xl hover:bg-surface-container transition-colors"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
-      {/* Mobile Nav */}
-      {isOpen && (
-        <div className="md:hidden border-t bg-white p-4 flex flex-col gap-4 animate-in slide-in-from-top">
-          <Link to="/map" className="text-lg font-medium p-2" onClick={() => setIsOpen(false)}>{t('nav.map')}</Link>
-          <Link to="/report" className="text-lg font-bold text-brand-red p-2" onClick={() => setIsOpen(false)}>Report Incident</Link>
-          <Link to="#" className="text-lg font-medium p-2" onClick={() => setIsOpen(false)}>{t('nav.safe_zones')}</Link>
-          <Link to="#" className="text-lg font-medium p-2" onClick={() => setIsOpen(false)}>{t('nav.reports')}</Link>
-          <Link to="#" className="text-lg font-medium p-2" onClick={() => setIsOpen(false)}>{t('common.volunteer')}</Link>
-          <div className="flex flex-col gap-2 pt-2">
-            <Button variant="emergency" className="w-full">{t('common.sos')}</Button>
-            <Link to="/auth" onClick={() => setIsOpen(false)}>
-              <Button variant="default" className="w-full">{t('common.sign_in')}</Button>
+      {/* Mobile Menu */}
+      {mobileOpen && (
+        <div className="md:hidden glass-card-elevated mx-4 mb-4 p-4 space-y-1 animate-entrance">
+          {navItems.map(item => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setMobileOpen(false)}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  isActive(item.path) ? 'bg-brand-red/10 text-brand-red' : 'text-sentinel-on-surface-variant hover:bg-surface-container'
+                }`}
+              >
+                <span className="flex items-center gap-3"><Icon className="w-4 h-4" />{item.label}</span>
+                <ChevronRight className="w-4 h-4 opacity-40" />
+              </Link>
+            )
+          })}
+          {dashboardPath && (
+            <Link
+              to={dashboardPath}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-sentinel-on-surface-variant hover:bg-surface-container transition-all"
+            >
+              <span className="flex items-center gap-3"><LayoutDashboard className="w-4 h-4" />{profile?.role === 'admin' ? 'Command Center' : 'My Tasks'}</span>
+              <ChevronRight className="w-4 h-4 opacity-40" />
             </Link>
+          )}
+          <div className="pt-3 border-t border-sentinel-outline-variant/20 mt-2">
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Link to="/profile-setup" onClick={() => setMobileOpen(false)} className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full rounded-xl font-bold">
+                    <User className="w-4 h-4 mr-2" /> Profile
+                  </Button>
+                </Link>
+                <button
+                  onClick={() => { signOut(); navigate('/'); setMobileOpen(false) }}
+                  className="p-2.5 rounded-xl text-brand-red hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <Link to="/auth" onClick={() => setMobileOpen(false)}>
+                <Button size="sm" className="w-full rounded-xl font-bold bg-brand-red hover:bg-brand-red/90">
+                  Sign In
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       )}

@@ -32,12 +32,12 @@ const getSafeZoneIcon = (type: SafeZone['type']) => {
   })
 }
 
-export default function SafeZoneMarkers() {
+export default function SafeZoneMarkers({ visible = true }: { visible?: boolean }) {
   const { safeZones, loading } = useSafeZones()
   const map = useMap()
 
   useEffect(() => {
-    if (loading || !safeZones.length) return
+    if (loading || !safeZones.length || !visible) return
 
     const mg = (L as any).markerClusterGroup({
       showCoverageOnHover: false,

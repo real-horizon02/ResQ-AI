@@ -17,7 +17,8 @@ const RISK_COLORS = {
   high: '#ef4444',   // Red
 }
 
-export default function RiskHeatmap() {
+export default function RiskHeatmap({ visible = true }: { visible?: boolean }) {
+  if (!visible) return null
   // In a real production scenario, this would fetch from a 'predicted_risks' table 
   // populated by a Python/Supabase AI worker. For this MVP, we use heuristic-based trends.
   const [risks, setRisks] = React.useState<RiskZone[]>([

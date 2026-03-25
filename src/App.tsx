@@ -1,41 +1,50 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { Layout } from './components/layout/Layout'
-import Home from './pages/Home'
-import MapPage from './pages/Map'
-import AuthPage from './pages/Auth'
-import ProfileSetup from './pages/ProfileSetup'
-import ReportPage from './pages/Report'
-import AdminDashboard from './pages/AdminDashboard'
-import VolunteerDashboard from './pages/VolunteerDashboard'
-import { useAuth } from './hooks/useAuth'
-import SOSButton from './components/sos/SOSButton'
-import { ErrorBoundary } from './components/ui/ErrorBoundary'
-import { ToastProvider } from './components/ui/Toast'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { useLenis } from './hooks/useLenis';
+import { CustomCursor } from './components/ui/CustomCursor';
+import { PageTransition } from './components/ui/PageTransition';
+import { ToastContainer } from './components/ui/Toast';
+import { FloatingSOS } from './components/ui/FloatingSOS';
+import { OfflineBanner } from './components/ui/OfflineBanner';
+import Home from './pages/Home';
+import MapPage from './pages/Map';
+import SOSPage from './pages/SOS';
+import VolunteerPage from './pages/Volunteer';
+import AdminPage from './pages/Admin';
+import AuthPage from './pages/Auth';
+import ProfilePage from './pages/Profile';
 
-function App() {
-  // Initialize auth listener
-  useAuth()
+function AppInner() {
+  useLenis();
+  const location = useLocation();
 
   return (
-    <ToastProvider>
-      <ErrorBoundary>
-        <Router>
-          <Layout>
-            <SOSButton />
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/profile-setup" element={<ProfileSetup />} />
-              <Route path="/report" element={<ReportPage />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/volunteer" element={<VolunteerDashboard />} />
-            </Routes>
-          </Layout>
-        </Router>
-      </ErrorBoundary>
-    </ToastProvider>
-  )
+    <>
+      <CustomCursor />
+      <OfflineBanner />
+      <FloatingSOS />
+      <ToastContainer />
+      <PageTransition key={location.pathname}>
+        <Routes location={location}>
+          <Route path="/" element={<Home />} />
+          <Route path="/map" element={<MapPage />} />
+          <Route path="/sos" element={<SOSPage />} />
+          <Route path="/volunteer" element={<VolunteerPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/auth" element={<AuthPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </PageTransition>
+    </>
+  );
 }
 
-export default App
+function App() {
+  return (
+    <Router>
+      <AppInner />
+    </Router>
+  );
+}
+
+export default App;

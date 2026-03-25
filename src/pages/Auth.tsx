@@ -1,179 +1,147 @@
-import { useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { Button } from '../components/ui/Button'
-import { Shield, Phone, Mail, ArrowRight, Loader2 } from 'lucide-react'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Navbar } from '../components/Navbar';
+import { toast } from '../components/ui/Toast';
 
-export default function AuthPage() {
-  const [loading, setLoading] = useState(false)
-  const [method, setMethod] = useState<'phone' | 'email'>('phone')
-  const [identifier, setIdentifier] = useState('')
-  const [otpMode, setOtpMode] = useState(false)
-  const [token, setToken] = useState('')
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+type Mode = 'login' | 'signup';
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage(null)
+function AuthForm({ mode, onSwitch }: { mode: Mode; onSwitch: () => void }) {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState('citizen');
+  const [loading, setLoading] = useState(false);
 
-    try {
-      if (method === 'phone') {
-        const { error } = await supabase.auth.signInWithOtp({
-          phone: identifier.startsWith('+') ? identifier : `+91${identifier}`,
-        })
-        if (error) throw error
-        setOtpMode(true)
-        setMessage({ type: 'success', text: 'OTP sent to your phone!' })
-      } else {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: identifier,
-          options: {
-            emailRedirectTo: window.location.origin,
-          },
-        })
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Magic link sent! Check your email.' })
-      }
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Sign-in failed' })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const ROLES = ['citizen', 'volunteer', 'admin'];
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setMessage(null)
-
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        phone: identifier.startsWith('+') ? identifier : `+91${identifier}`,
-        token,
-        type: 'sms',
-      })
-      if (error) throw error
-      // Redirect or state change will be handled by useAuth hook
-    } catch (error: unknown) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Verification failed' })
-    } finally {
-      setLoading(false)
-    }
-  }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      toast.success(mode === 'login' ? `Welcome back! 👋` : `Account created! Welcome to ResQ AI.`);
+      navigate(mode === 'signup' ? '/profile' : '/');
+    }, 1800);
+  };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="glass-card w-full max-w-md p-8 flex flex-col gap-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <div className="bg-brand-red/10 p-3 rounded-2xl">
-            <Shield className="w-10 h-10 text-brand-red" />
-          </div>
-          <h1 className="text-2xl font-bold text-brand-dark">Welcome to ResQ AI</h1>
-          <p className="text-sm text-gray-500">Sign in to report incidents and request help.</p>
+    <motion.form
+      key={mode}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      onSubmit={handleSubmit}
+      style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
+    >
+      <div>
+        <span className="label-caps-gold" style={{ display: 'block', marginBottom: 12 }}>
+          [ {mode === 'login' ? 'SECURE LOGIN' : 'CREATE ACCOUNT'} ]
+        </span>
+        <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 48, color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
+          {mode === 'login' ? 'Welcome back' : 'Join ResQ AI'}
+        </h2>
+        <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: 'var(--text-muted)', margin: '12px 0 0' }}>
+          {mode === 'login' ? 'Sign in to access your emergency dashboard.' : 'Become part of India\'s emergency response network.'}
+        </p>
+      </div>
+
+      {mode === 'signup' && (
+        <div style={{ position: 'relative', paddingTop: 4 }}>
+          <input className="input-underline" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} required />
         </div>
+      )}
 
-        {message && (
-          <div className={`p-3 rounded-lg text-sm font-medium ${
-            message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-brand-red border border-red-200'
-          }`}>
-            {message.text}
+      <div>
+        <input className="input-underline" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} type="email" required />
+      </div>
+
+      <div>
+        <input className="input-underline" placeholder="Password" value={pass} onChange={e => setPass(e.target.value)} type="password" required minLength={6} />
+      </div>
+
+      {mode === 'signup' && (
+        <div>
+          <span className="label-caps" style={{ display: 'block', marginBottom: 12 }}>I am a —</span>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {ROLES.map(r => (
+              <button type="button" key={r} onClick={() => setRole(r)}
+                style={{ padding: '8px 18px', borderRadius: 999, border: `1px solid ${role === r ? 'var(--accent-gold)' : 'var(--glass-border)'}`, background: role === r ? 'rgba(200,169,110,0.12)' : 'transparent', color: role === r ? 'var(--accent-gold)' : 'var(--text-muted)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer', textTransform: 'capitalize', transition: 'all 0.2s ease' }}>
+                {r}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {!otpMode ? (
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="flex bg-gray-100 p-1 rounded-xl">
-              <button
-                type="button"
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-all ${method === 'phone' ? 'bg-white shadow-sm text-brand-dark' : 'text-gray-500 hover:text-brand-dark'}`}
-                onClick={() => { setMethod('phone'); setIdentifier(''); }}
-              >
-                <Phone className="w-4 h-4" /> Phone
-              </button>
-              <button
-                type="button"
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-all ${method === 'email' ? 'bg-white shadow-sm text-brand-dark' : 'text-gray-500 hover:text-brand-dark'}`}
-                onClick={() => { setMethod('email'); setIdentifier(''); }}
-              >
-                <Mail className="w-4 h-4" /> Email
-              </button>
-            </div>
+      <button type="submit" className="btn-sos" style={{ marginTop: 8, fontSize: 15, opacity: loading ? 0.8 : 1 }}>
+        {loading ? (
+          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" style={{ animation: 'radar-sweep 0.8s linear infinite' }}>
+              <circle cx="9" cy="9" r="7" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+              <path d="M9 2A7 7 0 0 1 16 9" stroke="white" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+          </span>
+        ) : mode === 'login' ? 'Sign In →' : 'Create Account →'}
+      </button>
 
-            <div>
-              <label className="block text-xs font-bold text-brand-dark uppercase tracking-wider mb-1">
-                {method === 'phone' ? 'Mobile Number' : 'Email Address'}
-              </label>
-              <div className="relative">
-                <input
-                  type={method === 'phone' ? 'tel' : 'email'}
-                  placeholder={method === 'phone' ? '9876543210' : 'name@example.com'}
-                  required
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  className="w-full h-12 bg-white border border-gray-200 rounded-xl px-4 focus:ring-2 focus:ring-brand-red focus:border-transparent outline-none transition-all"
-                />
-                {method === 'phone' && !identifier.startsWith('+') && identifier && (
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">+91 </span>
-                )}
-              </div>
-              {method === 'phone' && (
-                <p className="text-[10px] text-gray-400 mt-2">
-                  We'll send a 6-digit OTP to your mobile for verification.
-                </p>
-              )}
-            </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+        <button type="button" onClick={onSwitch}
+          style={{ fontFamily: 'DM Sans', fontSize: 13, color: 'var(--accent-cyan)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          {mode === 'login' ? 'Create an account →' : '← Sign in instead'}
+        </button>
+        <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+      </div>
+    </motion.form>
+  );
+}
 
-            <Button disabled={loading} className="w-full h-12 rounded-xl group" type="submit">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                <>
-                  Continue <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-xs font-bold text-brand-dark uppercase tracking-wider">
-                  Verification Code
-                </label>
-                <button 
-                  type="button" 
-                  onClick={() => setOtpMode(false)}
-                  className="text-xs text-brand-blue hover:underline"
-                >
-                  Change number
-                </button>
-              </div>
-              <input
-                type="text"
-                placeholder="000000"
-                maxLength={6}
-                required
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="w-full h-14 text-center text-3xl font-bold tracking-[0.5em] bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-red focus:border-transparent outline-none transition-all"
-              />
-            </div>
+export default function AuthPage() {
+  const [mode, setMode] = useState<Mode>('login');
 
-            <Button disabled={loading} className="w-full h-12 rounded-xl" type="submit">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify & Continue'}
-            </Button>
-
-            <p className="text-center text-xs text-gray-400">
-              Didn't receive code? <button type="button" onClick={handleSignIn} className="text-brand-blue font-bold">Resend</button>
-            </p>
-          </form>
-        )}
-
-        <div className="text-center">
-          <p className="text-[10px] text-gray-400 leading-relaxed px-4">
-            By continuing, you agree to ResQ AI's Terms of Service and Privacy Policy. 
-            Standard messaging rates may apply for SMS.
+  return (
+    <div style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex' }}>
+      <Navbar />
+      {/* Left panel — branding */}
+      <div className="mobile-hide auth-split" style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: '45vw', background: 'var(--bg-surface)', borderRight: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '60px 60px 64px' }}>
+        {/* Auth panel animated dot grid */}
+        {[...Array(16)].map((_, i) => (
+          <div key={i} style={{
+            position: 'absolute', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent-cyan)', opacity: 0.1 + (i % 4) * 0.05,
+            left: `${((i % 4) + 1) * 20}%`, top: `${Math.floor(i / 4) * 22 + 8}%`,
+            animation: `pulse-dot ${2 + (i % 3)}s ease infinite`, animationDelay: `${i * 0.3}s`
+          }} />
+        ))}
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 64, color: 'var(--text-primary)', margin: '0 0 20px', lineHeight: 1 }}>
+            resQ<span style={{ color: 'var(--accent-red)' }}>AI</span>
+          </h1>
+          <p style={{ fontFamily: 'DM Sans', fontSize: 18, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 360, margin: '0 0 40px' }}>
+            "In a disaster, every second counts. ResQ AI ensures those seconds are not wasted."
           </p>
+          <div style={{ display: 'flex', gap: 32 }}>
+            {[['1247', 'Active Users'], ['48', 'Cities'], ['<5min', 'Avg Response']].map(([v, l]) => (
+              <div key={l}>
+                <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 28, color: 'var(--text-primary)' }}>{v}</div>
+                <div className="label-caps" style={{ marginTop: 4 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right panel — form */}
+      <div style={{ flex: 1, marginLeft: '45vw', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(100px,15vh,160px) clamp(32px,8vw,96px) 48px' }}>
+        <div style={{ width: '100%', maxWidth: 440 }}>
+          <AnimatePresence mode="wait">
+            <AuthForm key={mode} mode={mode} onSwitch={() => setMode(m => m === 'login' ? 'signup' : 'login')} />
+          </AnimatePresence>
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -35,7 +35,7 @@ export default function SOSButton() {
 
   if (isSOSActive) {
     return (
-      <div className="fixed bottom-24 right-6 left-6 md:left-auto md:w-80 bg-red-600 text-white p-4 rounded-2xl shadow-2xl animate-bounce z-[100] border-4 border-white/20">
+      <div className="fixed bottom-24 right-6 left-6 md:left-auto md:w-80 bg-urgency-gradient text-white p-4 rounded-2xl shadow-emergency animate-bounce z-[100] ghost-border">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center animate-pulse">
             <ShieldAlert className="w-6 h-6 text-white" />
@@ -56,7 +56,7 @@ export default function SOSButton() {
         onMouseUp={endPress}
         onTouchStart={startPress}
         onTouchEnd={endPress}
-        className="fixed bottom-24 right-6 w-16 h-16 bg-brand-red rounded-full shadow-2xl flex items-center justify-center z-[90] active:scale-95 transition-transform"
+        className="fixed bottom-24 right-6 w-16 h-16 bg-urgency-gradient rounded-full shadow-emergency flex items-center justify-center z-[90] active:scale-95 transition-transform emergency-glow"
       >
         <div className="absolute inset-0 rounded-full border-4 border-white/10" />
         {progress > 0 && (
@@ -81,7 +81,7 @@ export default function SOSButton() {
 
       {/* Accidental click deterrent message */}
       {progress > 0 && progress < 100 && (
-        <div className="fixed bottom-44 right-6 bg-brand-dark text-white px-4 py-2 rounded-xl text-xs font-bold animate-pulse z-[95] shadow-lg">
+        <div className="fixed bottom-44 right-6 bg-sentinel-on-surface text-white px-4 py-2 rounded-xl text-xs font-bold animate-pulse z-[95] shadow-lg">
           HOLD TO TRIGGER SOS ({Math.ceil((100 - progress) / 33.3)}s)
         </div>
       )}

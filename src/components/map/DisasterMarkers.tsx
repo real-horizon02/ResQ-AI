@@ -37,10 +37,10 @@ const getIcon = (type: DisasterEvent['type'], severity: DisasterEvent['severity'
   })
 }
 
-export default function DisasterMarkers() {
+export default function DisasterMarkers({ visible = true }: { visible?: boolean }) {
   const { disasters, loading } = useDisasters()
 
-  if (loading) return null
+  if (!visible || loading) return null
 
   return (
     <>

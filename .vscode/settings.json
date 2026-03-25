@@ -5,5 +5,10 @@
   "deno.unstable": true,
   "deno.importMap": "./supabase/functions/import_map.json",
   "deno.config": "./supabase/functions/deno.json",
-  "deno.path": "C:\\Users\\kshit\\.deno\\bin\\deno.exe"
+  "deno.path": "C:\\Users\\kshit\\.deno\\bin\\deno.exe",
+  "css.lint.unknownAtRules": "ignore",
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+
 }
