@@ -293,3 +293,45 @@
 @media (min-width: 768px) and (max-width: 1023px) {
   .admin-grid > *:first-child { flex: 0 0 55% !important; }
 }
+
+/* ── Missing Utilities ───────────────────────────────── */
+.btn-outline-cyan {
+  background: transparent;
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+  border-radius: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-outline-cyan:hover {
+  background: rgba(0,212,255,0.08);
+}
+
+.label-caps-gold {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+}
+
+.input-underline {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  padding: 12px 0;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s ease;
+}
+.input-underline::placeholder { color: var(--text-muted); }
+.input-underline:focus { border-bottom-color: var(--accent-cyan); }
+
+/* Leaflet container must have height */
+.leaflet-container { background: #06090F !important; }

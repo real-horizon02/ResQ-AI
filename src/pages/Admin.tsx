@@ -1,8 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { Check, X } from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { useAppStore } from '../store/useAppStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { supabase } from '../lib/supabase';
 import { ACTIVITY_FEED_TEMPLATES, TYPE_EMOJIS } from '../data/mockData';
+
+interface AdminRequest {
+  id: string;
+  user_id: string;
+  status: string;
+  requested_at: string;
+  profiles: { full_name: string | null; email: string | null; role: string } | null;
+}
 
 const SEV_COLORS: Record<string, string> = {
   critical: 'var(--accent-red)', high: 'var(--accent-orange)', medium: '#F59E0B', low: 'var(--text-muted)', resolved: 'var(--accent-green)',
@@ -50,9 +61,39 @@ const STATUS_OPTS = ['pending', 'verified', 'dispatched', 'resolved'];
 
 export default function AdminPage() {
   const { incidents, updateIncidentStatus } = useAppStore();
+  const { user } = useAuthStore();
   const [feed, setFeed] = useState(ACTIVITY_FEED_TEMPLATES);
   const [editing, setEditing] = useState<string | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
+  const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([]);
+  const [processingReq, setProcessingReq] = useState<string | null>(null);
+
+  // Fetch pending admin requests
+  useEffect(() => {
+    const fetchRequests = async () => {
+      const { data } = await supabase
+        .from('admin_requests')
+        .select('*, profiles(full_name, email, role)')
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false });
+      if (data) setAdminRequests(data as AdminRequest[]);
+    };
+    fetchRequests();
+  }, [user]);
+
+  const handleApproval = async (reqId: string, userId: string, approve: boolean) => {
+    setProcessingReq(reqId);
+    if (approve) {
+      await supabase.from('profiles').update({ role: 'admin', admin_approved: true }).eq('id', userId);
+    }
+    await supabase.from('admin_requests').update({
+      status: approve ? 'approved' : 'rejected',
+      reviewed_by: user?.id,
+      reviewed_at: new Date().toISOString(),
+    }).eq('id', reqId);
+    setAdminRequests(r => r.filter(x => x.id !== reqId));
+    setProcessingReq(null);
+  };
 
   // Simulate live feed entries at intervals
   useEffect(() => {
@@ -198,6 +239,51 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* Admin Approval Queue */}
+        {adminRequests.length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <div className="glass-card-elevated" style={{ overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="label-caps">Admin Access Requests</span>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, padding: '3px 10px', borderRadius: 999, background: 'rgba(200,169,110,0.1)', color: 'var(--accent-gold)', border: '1px solid rgba(200,169,110,0.2)' }}>{adminRequests.length} pending</span>
+              </div>
+              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {adminRequests.map(req => (
+                  <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: 12, gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 14, color: 'var(--bg)' }}>
+                          {req.profiles?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
+                        </span>
+                      </div>
+                      <div>
+                        <p style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{req.profiles?.full_name || 'Unknown'}</p>
+                        <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>{req.profiles?.email} · <span style={{ textTransform: 'capitalize' }}>{req.profiles?.role || 'citizen'}</span></p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                      <button
+                        onClick={() => handleApproval(req.id, req.user_id, true)}
+                        disabled={processingReq === req.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(0,230,118,0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                      >
+                        <Check size={14} /> Approve
+                      </button>
+                      <button
+                        onClick={() => handleApproval(req.id, req.user_id, false)}
+                        disabled={processingReq === req.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(255,45,45,0.08)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                      >
+                        <X size={14} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

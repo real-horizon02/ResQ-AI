@@ -125,21 +125,23 @@ export default function MapPage() {
   const { incidents, volunteers } = useAppStore();
   const [heatmapActive, setHeatmapActive] = useState(false);
 
+  const mapHeight = 'calc(100vh - 200px)';
+
   return (
-    <div style={{ background: 'var(--bg)', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
       {/* Hero strip */}
-      <div style={{ paddingTop: 72, paddingBottom: 28, paddingLeft: 'clamp(24px, 8vw, 64px)', background: 'var(--bg)' }}>
-        <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(48px, 8vw, 96px)', color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
+      <div style={{ paddingTop: 80, paddingBottom: 16, paddingLeft: 'clamp(24px, 8vw, 64px)', background: 'var(--bg)', flexShrink: 0 }}>
+        <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 6vw, 72px)', color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
           command
         </h1>
         <span className="label-caps">[ LIVE INCIDENT MONITORING — INDIA ]</span>
       </div>
 
       {/* Map + Sidebar */}
-      <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', height: mapHeight, position: 'relative' }}>
         <IncidentSidebar incidents={incidents} />
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
           <MapStatusBar incidents={incidents} volunteers={volunteers} />
           {/* Heatmap toggle */}
           <button
