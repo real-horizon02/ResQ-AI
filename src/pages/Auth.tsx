@@ -83,11 +83,17 @@ function AuthForm({ mode, onSwitch, redirectPath }: { mode: Mode; onSwitch: () =
 
   const handleOAuth = async (provider: 'google' | 'facebook' | 'twitter' | 'apple') => {
     setOauthLoading(provider);
+    setError('');
     try {
       await signInWithOAuth(provider);
-      // Will redirect to OAuth provider — no further action needed
+      // OAuth will redirect the page — no further action needed
     } catch (err: any) {
-      setError(err.message || `${provider} login failed`);
+      const msg: string = err.message || '';
+      if (msg.toLowerCase().includes('not enabled') || msg.includes('provider')) {
+        setError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in is not set up yet. Please use Email/Password below to sign in or create an account.`);
+      } else {
+        setError(msg || `${provider} login failed. Try email/password instead.`);
+      }
       setOauthLoading(null);
     }
   };

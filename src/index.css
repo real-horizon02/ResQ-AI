@@ -27,13 +27,17 @@
     font-family: 'DM Sans', system-ui, sans-serif;
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
-    cursor: none;
   }
-  @media (hover: none) { body { cursor: auto; } }
+  /* Custom cursor — only on desktop with fine pointer (not touch) */
+  @media (hover: hover) and (pointer: fine) {
+    body { cursor: none; }
+    a, button, [role="button"], [data-cursor] { cursor: none; }
+  }
+  @media (hover: none), (pointer: coarse) {
+    body, a, button { cursor: auto; }
+  }
   * { box-sizing: border-box; }
   *:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 2px; }
-  a { cursor: none; }
-  button { cursor: none; }
 }
 
 @layer components {

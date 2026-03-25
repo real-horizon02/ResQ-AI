@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { supabase } from '../lib/supabase';
 
 export type UserRole = 'citizen' | 'volunteer' | 'admin';
@@ -22,21 +21,18 @@ interface AuthStore {
   profile: UserProfile | null;
   loading: boolean;
   initialized: boolean;
-  // Computed
   isAdmin: boolean;
   isLoggedIn: boolean;
-  // Actions
   initialize: () => Promise<void>;
   signInWithOAuth: (provider: 'google' | 'facebook' | 'twitter' | 'apple') => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
   signOut: () => Promise<void>;
-  fetchProfile: (userId: string) => Promise<void>;
+  fetchProfile: (userId: string, userEmail?: string, userMeta?: any) => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
   requestAdminAccess: () => Promise<void>;
 }
 
-// 👑 Pre-defined super-admin email
 export const SUPER_ADMIN_EMAIL = 'kshitijkumawat48@gmail.com';
 export const SUPER_ADMIN_NAME = 'Kshitij';
 
@@ -45,53 +41,67 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   profile: null,
   loading: false,
   initialized: false,
-  get isAdmin() { return get().profile?.role === 'admin'; },
-  get isLoggedIn() { return !!get().user; },
+  isAdmin: false,
+  isLoggedIn: false,
 
   initialize: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      set({ user: session.user });
-      await get().fetchProfile(session.user.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        set({ user: session.user, isLoggedIn: true });
+        await get().fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
+      }
+    } catch (e) {
+      console.warn('Auth init error:', e);
     }
     set({ initialized: true });
 
-    // Listen for auth changes
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        set({ user: session.user });
-        await get().fetchProfile(session.user.id);
+        set({ user: session.user, isLoggedIn: true });
+        await get().fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
       } else {
-        set({ user: null, profile: null });
+        set({ user: null, profile: null, isAdmin: false, isLoggedIn: false });
       }
     });
   },
 
-  fetchProfile: async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+  fetchProfile: async (userId, userEmail, userMeta) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error || !data) {
+      if (!error && data) {
+        set({
+          profile: data as UserProfile,
+          isAdmin: data.role === 'admin',
+        });
+        return;
+      }
+
       // Profile doesn't exist yet — create it
-      const user = get().user;
-      const email = user?.email || '';
+      const email = userEmail || get().user?.email || '';
       const isSuper = email === SUPER_ADMIN_EMAIL;
       const newProfile: Partial<UserProfile> = {
         id: userId,
-        full_name: user?.user_metadata?.full_name || user?.user_metadata?.name || SUPER_ADMIN_NAME,
+        full_name: userMeta?.full_name || userMeta?.name || (isSuper ? SUPER_ADMIN_NAME : email.split('@')[0]),
         email,
         role: isSuper ? 'admin' : 'citizen',
         admin_approved: isSuper,
         admin_request: false,
         skills: [],
+        avatar_url: userMeta?.avatar_url || null,
       };
-      await supabase.from('profiles').upsert(newProfile);
-      set({ profile: newProfile as UserProfile });
-    } else {
-      set({ profile: data as UserProfile });
+
+      const { error: insertErr } = await supabase.from('profiles').upsert(newProfile);
+      if (insertErr) console.warn('Profile upsert error:', insertErr.message);
+
+      set({ profile: newProfile as UserProfile, isAdmin: isSuper });
+    } catch (e) {
+      console.warn('fetchProfile error:', e);
     }
   },
 
@@ -108,45 +118,60 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
 
   signInWithEmail: async (email, password) => {
     set({ loading: true });
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { set({ loading: false }); throw error; }
-    if (data.user) await get().fetchProfile(data.user.id);
-    set({ user: data.user, loading: false });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      if (data.user) {
+        set({ user: data.user, isLoggedIn: true });
+        await get().fetchProfile(data.user.id, data.user.email, data.user.user_metadata);
+      }
+    } finally {
+      set({ loading: false });
+    }
   },
 
   signUp: async (email, password, fullName, role) => {
     set({ loading: true });
     const isSuper = email === SUPER_ADMIN_EMAIL;
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: fullName } },
-    });
-    if (error) { set({ loading: false }); throw error; }
-    if (data.user) {
-      const profile: Partial<UserProfile> = {
-        id: data.user.id,
-        full_name: fullName,
-        email,
-        role: isSuper ? 'admin' : role,
-        admin_approved: isSuper,
-        admin_request: false,
-        skills: [],
-      };
-      await supabase.from('profiles').upsert(profile);
-      set({ user: data.user, profile: profile as UserProfile, loading: false });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email, password,
+        options: { data: { full_name: fullName } },
+      });
+      if (error) throw error;
+      if (data.user) {
+        const profile: Partial<UserProfile> = {
+          id: data.user.id,
+          full_name: fullName,
+          email,
+          role: isSuper ? 'admin' : role,
+          admin_approved: isSuper,
+          admin_request: false,
+          skills: [],
+        };
+        await supabase.from('profiles').upsert(profile);
+        set({ user: data.user, profile: profile as UserProfile, isAdmin: isSuper, isLoggedIn: true });
+      }
+    } finally {
+      set({ loading: false });
     }
   },
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ user: null, profile: null });
+    set({ user: null, profile: null, isAdmin: false, isLoggedIn: false });
   },
 
   updateProfile: async (updates) => {
     const userId = get().user?.id;
     if (!userId) return;
     const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
-    if (!error) set((s) => ({ profile: s.profile ? { ...s.profile, ...updates } : null }));
+    if (!error) {
+      set((s) => {
+        const newProfile = s.profile ? { ...s.profile, ...updates } : null;
+        return { profile: newProfile, isAdmin: newProfile?.role === 'admin' };
+      });
+    }
   },
 
   requestAdminAccess: async () => {
