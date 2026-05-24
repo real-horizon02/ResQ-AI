@@ -1,10 +1,14 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../../store/useAuthStore'
 import { Button } from '../ui/Button'
+import { LanguageSwitcher } from '../ui/LanguageSwitcher'
 import { Shield, Menu, X, MapPin, FileText, User, LogOut, ChevronRight, Zap, LayoutDashboard } from 'lucide-react'
 import { useState } from 'react'
+import { Logo } from '../ui/Logo'
 
 export default function Header() {
+  const { t } = useTranslation()
   const { user, profile, signOut } = useAuthStore()
   const location = useLocation()
   const navigate = useNavigate()
@@ -13,9 +17,9 @@ export default function Header() {
   const isActive = (path: string) => location.pathname === path
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: Zap },
-    { path: '/map', label: 'Live Map', icon: MapPin },
-    { path: '/report', label: 'Report', icon: FileText },
+    { path: '/', label: t('header.dashboard'), icon: Zap },
+    { path: '/map', label: t('header.liveMap'), icon: MapPin },
+    { path: '/report', label: t('header.report'), icon: FileText },
   ]
 
   const dashboardPath = profile?.role === 'admin' ? '/admin' : profile?.role === 'volunteer' ? '/volunteer' : null
@@ -26,9 +30,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="p-1.5 bg-urgency-gradient rounded-lg shadow-sm group-hover:shadow-emergency transition-shadow">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
+            <Logo className="w-8 h-8 group-hover:scale-110 transition-transform" />
             <span className="text-lg font-black text-sentinel-on-surface tracking-tight">
               ResQ<span className="text-brand-red"> AI</span>
             </span>
@@ -63,19 +65,20 @@ export default function Header() {
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                {profile?.role === 'admin' ? 'Command Center' : 'My Tasks'}
+                {profile?.role === 'admin' ? t('header.commandCenter') : t('header.myTasks')}
               </Link>
             )}
           </nav>
 
           {/* Right Section */}
           <div className="hidden md:flex items-center gap-3">
+            <LanguageSwitcher variant="ghost" />
             {user ? (
               <div className="flex items-center gap-3">
                 <Link to="/profile-setup">
                   <button className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-sentinel-on-surface-variant hover:text-sentinel-on-surface hover:bg-surface-container transition-all">
                     <User className="w-4 h-4" />
-                    Profile
+                    {t('header.profile')}
                   </button>
                 </Link>
                 <button
@@ -88,7 +91,7 @@ export default function Header() {
             ) : (
               <Link to="/auth">
                 <Button size="sm" className="rounded-xl font-bold bg-brand-red hover:bg-brand-red/90 px-5">
-                  Sign In
+                  {t('header.signIn')}
                 </Button>
               </Link>
             )}
@@ -129,7 +132,7 @@ export default function Header() {
               onClick={() => setMobileOpen(false)}
               className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold text-sentinel-on-surface-variant hover:bg-surface-container transition-all"
             >
-              <span className="flex items-center gap-3"><LayoutDashboard className="w-4 h-4" />{profile?.role === 'admin' ? 'Command Center' : 'My Tasks'}</span>
+              <span className="flex items-center gap-3"><LayoutDashboard className="w-4 h-4" />{profile?.role === 'admin' ? t('header.commandCenter') : t('header.myTasks')}</span>
               <ChevronRight className="w-4 h-4 opacity-40" />
             </Link>
           )}
@@ -138,7 +141,7 @@ export default function Header() {
               <div className="flex items-center gap-2">
                 <Link to="/profile-setup" onClick={() => setMobileOpen(false)} className="flex-1">
                   <Button variant="outline" size="sm" className="w-full rounded-xl font-bold">
-                    <User className="w-4 h-4 mr-2" /> Profile
+                    <User className="w-4 h-4 mr-2" /> {t('header.profile')}
                   </Button>
                 </Link>
                 <button
@@ -151,7 +154,7 @@ export default function Header() {
             ) : (
               <Link to="/auth" onClick={() => setMobileOpen(false)}>
                 <Button size="sm" className="w-full rounded-xl font-bold bg-brand-red hover:bg-brand-red/90">
-                  Sign In
+                  {t('header.signIn')}
                 </Button>
               </Link>
             )}

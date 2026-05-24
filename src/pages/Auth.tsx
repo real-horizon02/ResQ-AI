@@ -3,11 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '../components/Navbar';
 import { useAuthStore } from '../store/useAuthStore';
+import { Logo } from '../components/ui/Logo';
 
 type Mode = 'login' | 'signup';
 
 const OAUTH_PROVIDERS = [
-  { id: 'google' as const, label: 'Google', icon: (
+  { id: 'google' as const, label: 'Google', color: '#4285F4', cursorLabel: 'GOOGLE', icon: (
     <svg viewBox="0 0 24 24" width="18" height="18">
       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -15,12 +16,12 @@ const OAUTH_PROVIDERS = [
       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
     </svg>
   )},
-  { id: 'facebook' as const, label: 'Facebook', icon: (
+  { id: 'facebook' as const, label: 'Facebook', color: '#1877F2', cursorLabel: 'FACEBOOK', icon: (
     <svg viewBox="0 0 24 24" width="18" height="18">
       <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
     </svg>
   )},
-  { id: 'twitter' as const, label: 'X (Twitter)', icon: (
+  { id: 'twitter' as const, label: 'X (Twitter)', color: '#000000', cursorLabel: 'X / TWITTER', icon: (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
     </svg>
@@ -32,15 +33,16 @@ function OAuthButton({ provider, onClick, loading }: { provider: typeof OAUTH_PR
     <button
       onClick={onClick}
       disabled={loading}
+      data-cursor-color={provider.color}
+      data-cursor-label={provider.cursorLabel}
+      className={`hover-flash-${provider.id}`}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
         padding: '13px 20px', borderRadius: 12, width: '100%',
         background: 'var(--glass)', border: '1px solid var(--glass-border)',
         color: 'var(--text-primary)', fontFamily: 'DM Sans', fontWeight: 500, fontSize: 14,
-        cursor: 'pointer', transition: 'all 0.2s ease', opacity: loading ? 0.6 : 1,
+        cursor: 'pointer', transition: 'all 0.4s ease', opacity: loading ? 0.6 : 1,
       }}
-      onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; } }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.background = 'var(--glass)'; }}
     >
       {provider.icon}
       Continue with {provider.label}
@@ -214,11 +216,14 @@ export default function AuthPage() {
         {[...Array(16)].map((_, i) => (
           <div key={i} style={{ position: 'absolute', width: 4, height: 4, borderRadius: '50%', background: 'var(--accent-cyan)', opacity: 0.08 + (i % 4) * 0.04, left: `${((i % 4) + 1) * 20}%`, top: `${Math.floor(i / 4) * 22 + 8}%`, animation: `pulse-dot ${2 + (i % 3)}s ease infinite`, animationDelay: `${i * 0.3}s` }} />
         ))}
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 64, color: 'var(--text-primary)', margin: '0 0 20px', lineHeight: 1 }}>
-            resQ<span style={{ color: 'var(--accent-red)' }}>AI</span>
-          </h1>
-          <p style={{ fontFamily: 'DM Sans', fontSize: 18, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 360, margin: '0 0 40px' }}>
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div className="flex items-center gap-4 mb-4">
+              <Logo className="w-16 h-16" />
+              <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 64, color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
+                ResQ<span style={{ color: 'var(--accent-red)' }}>AI</span>
+              </h1>
+            </div>
+            <p style={{ fontFamily: 'DM Sans', fontSize: 18, color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 360, margin: '0 0 40px' }}>
             "In a disaster, every second counts. ResQ AI ensures those seconds are not wasted."
           </p>
           <div style={{ display: 'flex', gap: 32 }}>

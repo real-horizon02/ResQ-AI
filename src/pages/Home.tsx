@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { useNumberCounter } from '../hooks/useNumberCounter';
@@ -6,6 +7,7 @@ import { useStaggeredReveal } from '../hooks/useStaggeredReveal';
 
 /* ── Hero Section ───────────────────────────────── */
 function HeroSection() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [revealed, setRevealed] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -53,38 +55,38 @@ function HeroSection() {
       <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(100px,12vh,160px) clamp(24px, 8vw, 96px) 60px' }}>
         {/* Label */}
         <div className="label-caps-gold" style={{ marginBottom: 32, opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.1s' }}>
-          [ INDIA'S EMERGENCY RESPONSE PLATFORM ]
+          [ {t('home.hero_label')} ]
         </div>
 
         {/* Headline */}
         <div style={{ lineHeight: 1.05, marginBottom: 32 }}>
           <div style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(40px, 6vw, 80px)', color: 'var(--text-muted)', opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s' }}>
-            when
+            {t('home.hero_when')}
           </div>
           <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(72px, 12vw, 140px)', color: 'var(--text-primary)', lineHeight: 0.95, opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.25s' }}>
-            seconds
+            {t('home.hero_seconds')}
           </div>
           <div style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(40px, 6vw, 80px)', color: 'var(--text-muted)', opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.35s' }}>
-            matter,
+            {t('home.hero_matter')}
           </div>
           <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(56px, 8vw, 100px)', lineHeight: 1, opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.45s' }}>
-              <span style={{ color: 'var(--accent-red)' }}>data</span>
-              <span style={{ color: 'var(--text-primary)' }}> saves lives</span>
+              <span style={{ color: 'var(--accent-red)' }}>{t('home.hero_data')}</span>
+              <span style={{ color: 'var(--text-primary)' }}>{t('home.hero_saves')}</span>
           </div>
         </div>
 
         {/* Sub-copy */}
         <p style={{ fontFamily: 'DM Sans', fontSize: 18, color: 'var(--text-muted)', maxWidth: 520, lineHeight: 1.6, marginBottom: 40, opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.55s' }}>
-          AI-powered disaster coordination platform for a resilient India. Real-time. Everywhere. Always.
+          {t('home.hero_subtitle')}
         </p>
 
         {/* CTAs */}
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.65s' }}>
           <button className="btn-sos" onClick={() => navigate('/sos')} data-cursor="sos" style={{ fontSize: 16 }}>
-            🚨 Send SOS
+            {t('home.cta_sos')}
           </button>
           <button className="btn-outline-cyan" onClick={() => navigate('/map')} data-cursor="map" style={{ fontSize: 16 }}>
-            View Live Map →
+            {t('home.cta_map')}
           </button>
         </div>
 

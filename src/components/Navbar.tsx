@@ -2,11 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, User, Shield, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
+import { Logo } from './ui/Logo';
+import { LanguageSwitcher } from './ui/LanguageSwitcher';
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useTranslation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -14,8 +18,8 @@ export function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const NAV_LINKS = [
-    { label: 'Map', href: '/map' },
-    { label: 'Volunteer', href: '/volunteer' },
+    { label: t('nav.map'), href: '/map' },
+    { label: t('nav.volunteer'), href: '/volunteer' },
   ];
 
   useEffect(() => {
@@ -57,14 +61,17 @@ export function Navbar() {
           backdropFilter: scrolled ? 'blur(20px)' : 'none',
           WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
           borderBottom: scrolled ? '1px solid var(--glass-border)' : 'none',
-          background: scrolled ? 'rgba(6,9,15,0.85)' : 'transparent',
+          background: scrolled ? 'var(--nav-bg)' : 'transparent',
           transition: 'padding 0.3s ease, background 0.3s ease, border 0.3s ease',
         }}
       >
         {/* Brand */}
-        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'baseline', gap: 1 }}>
-          <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 22, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>ResQ</span>
-          <span style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 24, color: 'var(--accent-red)', lineHeight: 1 }}>AI</span>
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Logo className="w-8 h-8" />
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 22, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>ResQ</span>
+            <span style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 24, color: 'var(--accent-red)', lineHeight: 1 }}>AI</span>
+          </div>
         </Link>
 
         {/* Desktop nav */}
@@ -91,6 +98,8 @@ export function Navbar() {
             onMouseLeave={(e) => { const t = e.currentTarget; t.style.background = 'transparent'; t.style.color = 'var(--accent-red)'; }}>
             🚨 SOS
           </button>
+
+          <LanguageSwitcher variant="outline" />
 
           {/* Auth area */}
           {user ? (
@@ -202,9 +211,12 @@ export function Navbar() {
             <button onClick={() => setMenuOpen(false)} style={{ position: 'absolute', top: 24, right: 32, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
               <X size={28} />
             </button>
-            <div style={{ marginBottom: 40, display: 'flex', alignItems: 'baseline', gap: 2 }}>
-              <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 28, color: 'var(--text-primary)' }}>ResQ</span>
-              <span style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 30, color: 'var(--accent-red)' }}>AI</span>
+            <div style={{ marginBottom: 40, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Logo className="w-12 h-12" />
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 28, color: 'var(--text-primary)' }}>ResQ</span>
+                <span style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 30, color: 'var(--accent-red)' }}>AI</span>
+              </div>
             </div>
             {[...NAV_LINKS, ...(isAdmin ? [{ label: 'Admin', href: '/admin' }] : [])].map((l, i) => (
               <motion.div key={l.label} initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1, transition: { delay: i * 0.07 } }}>

@@ -13,7 +13,7 @@ export function useDashboardStats() {
     activeDisasters: 0,
     verifiedVolunteers: 0,
     sosResolvedRate: 0,
-    pendingReports: 0,
+    pendingReports: 0,          
   })
   const [loading, setLoading] = useState(true)
 

@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export function CustomCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
   const pos = useRef({ x: 0, y: 0 });
   const actual = useRef({ x: 0, y: 0 });
-  const [hoverType, setHoverType] = useState<'default' | 'link' | 'sos' | 'map'>('default');
+  const [hoverType, setHoverType] = useState<'default' | 'link' | 'sos' | 'map' | 'brand'>('default');
+  const [activeColor, setActiveColor] = useState<string | null>(null);
   const [label, setLabel] = useState('');
 
   useEffect(() => {
@@ -15,10 +16,32 @@ export function CustomCursor() {
     const onMouseMove = (e: MouseEvent) => {
       pos.current = { x: e.clientX, y: e.clientY };
       const target = e.target as HTMLElement;
-      if (target.closest('[data-cursor="sos"]')) { setHoverType('sos'); setLabel(''); }
-      else if (target.closest('[data-cursor="map"]')) { setHoverType('map'); setLabel('EXPLORE'); }
-      else if (target.closest('a, button, [role="button"]')) { setHoverType('link'); setLabel(''); }
-      else { setHoverType('default'); setLabel(''); }
+      const brandEl = target.closest('[data-cursor-color]') as HTMLElement;
+      const sosEl = target.closest('[data-cursor="sos"]');
+      const mapEl = target.closest('[data-cursor="map"]');
+      const linkEl = target.closest('a, button, [role="button"]');
+
+      if (brandEl) {
+        setHoverType('brand');
+        setActiveColor(brandEl.getAttribute('data-cursor-color'));
+        setLabel(brandEl.getAttribute('data-cursor-label') || '');
+      } else if (sosEl) {
+        setHoverType('sos');
+        setActiveColor(null);
+        setLabel('');
+      } else if (mapEl) {
+        setHoverType('map');
+        setActiveColor(null);
+        setLabel('EXPLORE');
+      } else if (linkEl) {
+        setHoverType('link');
+        setActiveColor(null);
+        setLabel('');
+      } else {
+        setHoverType('default');
+        setActiveColor(null);
+        setLabel('');
+      }
     };
 
     window.addEventListener('mousemove', onMouseMove);
@@ -40,8 +63,8 @@ export function CustomCursor() {
     };
   }, []);
 
-  const size = hoverType === 'link' || hoverType === 'map' ? 52 : hoverType === 'sos' ? 44 : 10;
-  const bg = hoverType === 'sos' ? 'var(--accent-red)' : 'var(--accent-cyan)';
+  const size = hoverType === 'link' || hoverType === 'map' || hoverType === 'brand' ? 52 : hoverType === 'sos' ? 44 : 10;
+  const bg = activeColor || (hoverType === 'sos' ? 'var(--accent-red)' : 'var(--accent-cyan)');
   const blend = hoverType === 'link' ? 'difference' : 'normal';
 
   return (
@@ -55,11 +78,12 @@ export function CustomCursor() {
         marginLeft: -size / 2, marginTop: -size / 2,
         transition: 'width 0.3s cubic-bezier(0.16,1,0.3,1), height 0.3s cubic-bezier(0.16,1,0.3,1), background 0.3s ease',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        animation: hoverType === 'sos' ? 'pulse-dot 1s ease-in-out infinite' : 'none',
+        boxShadow: activeColor ? `0 0 40px ${activeColor}` : 'none',
+        animation: hoverType === 'sos' || activeColor ? 'pulse-dot 1s ease-in-out infinite' : 'none',
       }}
     >
       {label && (
-        <span style={{ fontSize: 8, fontFamily: 'DM Sans', fontWeight: 700, letterSpacing: '0.1em', color: '#000', userSelect: 'none' }}>
+        <span style={{ fontSize: 9, fontFamily: 'DM Sans', fontWeight: 800, letterSpacing: '0.05em', color: activeColor ? '#fff' : '#000', userSelect: 'none', textAlign: 'center', padding: '0 4px' }}>
           {label}
         </span>
       )}

@@ -17,6 +17,20 @@
   --text-primary: #EEF2FF;
   --text-muted: #5A6A8A;
   --text-dim: #2A3A55;
+  --nav-bg: rgba(6, 9, 15, 0.85);
+}
+
+[data-theme='light'] {
+  --bg: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F1F5F9;
+  --text-primary: #0F172A;
+  --text-muted: #475569;
+  --text-dim: #94A3B8;
+  --glass: rgba(0, 0, 0, 0.04);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --nav-bg: rgba(248, 250, 252, 0.85);
+  --accent-gold: #B5892D; /* Slightly darker for contrast on white */
 }
 
 @layer base {
@@ -27,6 +41,7 @@
     font-family: 'DM Sans', system-ui, sans-serif;
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
   /* Custom cursor — only on desktop with fine pointer (not touch) */
   @media (hover: hover) and (pointer: fine) {
@@ -252,6 +267,29 @@
 @keyframes donut-draw {
   from { stroke-dasharray: 0 100; }
 }
+
+/* ── Brand Flash Animations ─────────────────────────── */
+@keyframes flash-google {
+  0% { border-color: rgba(66, 133, 244, 0.4); background: rgba(66, 133, 244, 0.08); box-shadow: 0 0 15px rgba(66, 133, 244, 0.2); }
+  25% { border-color: rgba(234, 67, 53, 0.4); background: rgba(234, 67, 53, 0.08); box-shadow: 0 0 15px rgba(234, 67, 53, 0.2); }
+  50% { border-color: rgba(251, 188, 5, 0.4); background: rgba(251, 188, 5, 0.08); box-shadow: 0 0 15px rgba(251, 188, 5, 0.2); }
+  75% { border-color: rgba(52, 168, 83, 0.4); background: rgba(52, 168, 83, 0.08); box-shadow: 0 0 15px rgba(52, 168, 83, 0.2); }
+  100% { border-color: rgba(66, 133, 244, 0.4); background: rgba(66, 133, 244, 0.08); box-shadow: 0 0 15px rgba(66, 133, 244, 0.2); }
+}
+
+@keyframes flash-facebook {
+  0%, 100% { border-color: rgba(24, 119, 242, 0.4); background: rgba(24, 119, 242, 0.08); box-shadow: 0 0 15px rgba(24, 119, 242, 0.2); }
+  50% { border-color: rgba(13, 102, 208, 0.6); background: rgba(13, 102, 208, 0.15); box-shadow: 0 0 25px rgba(13, 102, 208, 0.3); }
+}
+
+@keyframes flash-twitter {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.05); box-shadow: 0 0 15px rgba(255, 255, 255, 0.1); }
+  50% { border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.15); box-shadow: 0 0 25px rgba(255, 255, 255, 0.2); }
+}
+
+.hover-flash-google:hover { animation: flash-google 1.5s linear infinite !important; }
+.hover-flash-facebook:hover { animation: flash-facebook 1s ease-in-out infinite !important; }
+.hover-flash-twitter:hover { animation: flash-twitter 1.2s ease-in-out infinite !important; }
 
 /* ── Animation Helpers ───────────────────────────────── */
 .animate-marquee { animation: marquee 30s linear infinite; }
