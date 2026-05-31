@@ -1,0 +1,61 @@
+{
+  "common": {
+    "app_name": "[TRANSLATE: ResQ AI]",
+    "sos": "SOS आपातकाल",
+    "get_help": "अभी मदद लें",
+    "sign_in": "साइन इन करें",
+    "volunteer": "स्वेच्छासेवक बनें"
+  },
+  "nav": {
+    "map": "आपदा मानचित्र",
+    "volunteer": "स्वेच्छासेवक",
+    "safe_zones": "सुरक्षित क्षेत्र",
+    "reports": "घटना रिपोर्ट"
+  },
+  "header": {
+    "dashboard": "डैशबोर्ड",
+    "liveMap": "लाइव मानचित्र",
+    "report": "रिपोर्ट करें",
+    "profile": "प्रोफ़ाइल",
+    "signIn": "साइन इन करें",
+    "commandCenter": "कमांड सेंटर",
+    "myTasks": "मेरे कार्य"
+  },
+  "home": {
+    "hero_label": "भारत का आपातकालीन प्रतिक्रिया मंच",
+    "hero_when": "जब",
+    "hero_seconds": "सेकंड",
+    "hero_matter": "[TRANSLATE: matter,]",
+    "hero_data": "डेटा",
+    "hero_saves": "जीवन बचाता है",
+    "hero_subtitle": "[TRANSLATE: AI-powered disaster coordination platform for a resilient India. Real-time. Everywhere. Always.]",
+    "cta_sos": "[TRANSLATE: 🚨 Send SOS]",
+    "cta_map": "[TRANSLATE: View Live Map →]"
+  },
+  "auth": {
+    "login": "लॉगिन",
+    "logout": "लॉग आउट",
+    "signup": "[TRANSLATE: Sign Up]",
+    "email": "[TRANSLATE: Email]",
+    "password": "[TRANSLATE: Password]",
+    "remember_me": "[TRANSLATE: Remember Me]",
+    "forgot_password": "[TRANSLATE: Forgot Password]"
+  },
+  "errors": {
+    "loading": "लोड हो रहा है",
+    "error": "त्रुटि",
+    "not_found": "[TRANSLATE: Not Found]",
+    "unauthorized": "[TRANSLATE: Unauthorized]",
+    "server_error": "[TRANSLATE: Server Error]"
+  },
+  "common_actions": {
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "close": "बंद करें",
+    "submit": "जमा करें",
+    "search": "खोज",
+    "filter": "[TRANSLATE: Filter]"
+  }
+}
