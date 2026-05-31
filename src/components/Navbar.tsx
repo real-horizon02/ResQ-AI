@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, LogOut, User, Shield, ChevronDown } from 'lucide-react';
+import { Menu, X, LogOut, User, Shield, ChevronDown, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/useAuthStore';
@@ -16,6 +16,15 @@ export function Navbar() {
   const location = useLocation();
   const { user, profile, isAdmin, signOut } = useAuthStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // ── Navbar SOS hold state ──────────────────────────────────────────
+  const [sosProgress, setSosProgress] = useState(0);
+  const [sosHolding, setSosHolding] = useState(false);
+  const [sosPopup, setSosPopup] = useState(false);
+  const sosTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sosRaf   = useRef<number | null>(null);
+  const sosStart = useRef<number | null>(null);
+  const sosFired = useRef(false);
 
   const NAV_LINKS = [
     { label: t('nav.map'), href: '/map' },
@@ -41,10 +50,50 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Auto-dismiss SOS popup after 5s
+  useEffect(() => {
+    if (sosPopup) {
+      const t = setTimeout(() => setSosPopup(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [sosPopup]);
+
   const handleSignOut = async () => {
     await signOut();
     setDropdownOpen(false);
     navigate('/');
+  };
+
+  // ── Navbar SOS hold handlers ───────────────────────────────────────
+  const startSosHold = () => {
+    if (sosFired.current) return;
+    sosFired.current = false;
+    sosStart.current = performance.now();
+    setSosHolding(true);
+    setSosProgress(0);
+    const tick = (now: number) => {
+      const elapsed = now - (sosStart.current ?? now);
+      setSosProgress(Math.min((elapsed / 3000) * 100, 100));
+      if (elapsed < 3000) sosRaf.current = requestAnimationFrame(tick);
+    };
+    sosRaf.current = requestAnimationFrame(tick);
+    sosTimer.current = setTimeout(() => {
+      sosFired.current = true;
+      setSosHolding(false);
+      setSosProgress(0);
+      setSosPopup(true);
+    }, 3000);
+  };
+
+  const cancelSosHold = () => {
+    if (sosTimer.current) { clearTimeout(sosTimer.current); sosTimer.current = null; }
+    if (sosRaf.current)   { cancelAnimationFrame(sosRaf.current); sosRaf.current = null; }
+    if (!sosFired.current) { setSosHolding(false); setSosProgress(0); }
+  };
+
+  const handleSosClick = (e: React.MouseEvent) => {
+    if (sosFired.current) { sosFired.current = false; e.preventDefault(); return; }
+    navigate('/sos');
   };
 
   const initials = profile?.full_name
@@ -91,12 +140,48 @@ export function Navbar() {
             </Link>
           )}
 
-          {/* SOS button */}
-          <button onClick={() => navigate('/sos')}
-            style={{ fontSize: 12, padding: '8px 20px', borderRadius: 999, fontFamily: 'DM Sans', fontWeight: 700, letterSpacing: '0.05em', border: '1px solid var(--accent-red)', background: 'transparent', color: 'var(--accent-red)', cursor: 'pointer', boxShadow: '0 0 16px rgba(255,45,45,0.15)', transition: 'all 0.2s ease' }}
-            onMouseEnter={(e) => { const t = e.currentTarget; t.style.background = 'var(--accent-red)'; t.style.color = '#fff'; }}
-            onMouseLeave={(e) => { const t = e.currentTarget; t.style.background = 'transparent'; t.style.color = 'var(--accent-red)'; }}>
-            🚨 SOS
+          {/* SOS button — hold 3s to send */}
+          <button
+            onMouseDown={startSosHold}
+            onMouseUp={cancelSosHold}
+            onMouseLeave={cancelSosHold}
+            onTouchStart={(e) => { e.preventDefault(); startSosHold(); }}
+            onTouchEnd={cancelSosHold}
+            onTouchCancel={cancelSosHold}
+            onClick={handleSosClick}
+            style={{
+              position: 'relative',
+              overflow: 'hidden',
+              fontSize: 12,
+              padding: '8px 20px',
+              borderRadius: 999,
+              fontFamily: 'DM Sans',
+              fontWeight: 700,
+              letterSpacing: '0.05em',
+              border: '1px solid var(--accent-red)',
+              background: sosHolding ? 'rgba(255,45,45,0.1)' : 'transparent',
+              color: 'var(--accent-red)',
+              cursor: 'pointer',
+              boxShadow: sosHolding ? '0 0 24px rgba(255,45,45,0.35)' : '0 0 16px rgba(255,45,45,0.15)',
+              transition: 'background 0.2s ease, box-shadow 0.2s ease',
+              userSelect: 'none',
+              WebkitUserSelect: 'none' as const,
+              transform: sosHolding ? 'scale(0.96)' : 'scale(1)',
+            }}
+          >
+            {/* White sweep line */}
+            <span style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              height: '100%',
+              width: `${sosProgress}%`,
+              background: 'rgba(255, 255, 255, 0.28)',
+              borderRadius: 999,
+              pointerEvents: 'none',
+            }} />
+            {/* Label */}
+            <span style={{ position: 'relative', zIndex: 1 }}>🚨 SOS</span>
           </button>
 
           <LanguageSwitcher variant="outline" />
@@ -234,6 +319,25 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── SOS Sent Popup ──────────────────────────────────────────── */}
+      {sosPopup && (
+        <div className="sos-popup-overlay" onClick={() => setSosPopup(false)} aria-modal="true" role="dialog">
+          <div className="sos-popup-card" onClick={(e) => e.stopPropagation()}>
+            <div className="sos-popup-icon">
+              <CheckCircle size={40} color="#00E676" strokeWidth={2} />
+            </div>
+            <p className="sos-popup-title">SOS Sent!</p>
+            <p className="sos-popup-msg">
+              SOS request has been sent to the admin.<br />
+              We will rescue you soon. Stay safe 🙏
+            </p>
+            <button className="sos-popup-close" onClick={() => setSosPopup(false)}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

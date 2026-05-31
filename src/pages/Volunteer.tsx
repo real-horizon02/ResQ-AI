@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '../components/Navbar';
 import { useAppStore } from '../store/useAppStore';
@@ -49,7 +49,7 @@ function TaskCard({ incident, distance }: { incident: Incident; distance: string
       </div>
 
       <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-muted)', margin: '0 0 4px' }}>{incident.location}</p>
-      <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-dim)', margin: '0 0 10px' }}>~{distance} away · 👥 {incident.peopleAffected.toLocaleString()}</p>
+      <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-dim)', margin: '0 0 10px' }}>~{distance} away · 👥 {(incident.peopleAffected ?? 0).toLocaleString()}</p>
 
       {/* Skills */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -130,6 +130,22 @@ export default function VolunteerPage() {
   const { incidents } = useAppStore();
   const [activeTab, setActiveTab] = useState('All');
   const listRef = useStaggeredReveal(80);
+
+  useEffect(() => {
+    async function fetchDisasters() {
+      try {
+        const res = await fetch("http://localhost:5000/api/disasters");
+        const data = await res.json();
+        useAppStore.setState({ incidents: data });
+      } catch (err) {
+        console.error("Error fetching disasters in volunteer hub:", err);
+      }
+    }
+
+    if (incidents.length === 0) {
+      fetchDisasters();
+    }
+  }, []);
 
   const filtered = (() => {
     if (activeTab === 'Critical Only') return incidents.filter(i => i.severity === 'critical');

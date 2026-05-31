@@ -81,6 +81,23 @@ export default function AdminPage() {
     fetchRequests();
   }, [user]);
 
+  // Fetch real-time disasters
+  useEffect(() => {
+    async function fetchDisasters() {
+      try {
+        const res = await fetch("http://localhost:5000/api/disasters");
+        const data = await res.json();
+        useAppStore.setState({ incidents: data });
+      } catch (err) {
+        console.error("Error fetching disasters in admin command center:", err);
+      }
+    }
+
+    if (incidents.length === 0) {
+      fetchDisasters();
+    }
+  }, []);
+
   const handleApproval = async (reqId: string, userId: string, approve: boolean) => {
     setProcessingReq(reqId);
     if (approve) {
@@ -198,7 +215,7 @@ export default function AdminPage() {
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--accent-orange)', whiteSpace: 'nowrap' }}>👥 {inc.peopleAffected.toLocaleString()}</td>
+                        <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--accent-orange)', whiteSpace: 'nowrap' }}>👥 {(inc.peopleAffected ?? 0).toLocaleString()}</td>
                       </motion.tr>
                     ))}
                   </tbody>

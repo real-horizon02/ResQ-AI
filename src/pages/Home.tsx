@@ -4,55 +4,44 @@ import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { useNumberCounter } from '../hooks/useNumberCounter';
 import { useStaggeredReveal } from '../hooks/useStaggeredReveal';
+import { useHomeStats } from '../hooks/useHomeStats';
+import Radar from '../components/ui/Radar.tsx';
 
 /* ── Hero Section ───────────────────────────────── */
 function HeroSection() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [revealed, setRevealed] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setRevealed(true), 100);
     return () => clearTimeout(t);
   }, []);
 
-  // Animated dot grid
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    let raf: number;
-    let t = 0;
-    function draw() {
-      canvas!.width = canvas!.offsetWidth;
-      canvas!.height = canvas!.offsetHeight;
-      const cols = Math.ceil(canvas!.width / 36);
-      const rows = Math.ceil(canvas!.height / 36);
-      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
-      for (let x = 0; x < cols; x++) {
-        for (let y = 0; y < rows; y++) {
-          const opacity = 0.08 + 0.06 * Math.sin(x * 0.4 + y * 0.3 + t);
-          ctx!.beginPath();
-          ctx!.arc(x * 36 + 18, y * 36 + 18, 1.5, 0, Math.PI * 2);
-          ctx!.fillStyle = `rgba(0, 212, 255, ${opacity})`;
-          ctx!.fill();
-        }
-      }
-      t += 0.015;
-      raf = requestAnimationFrame(draw);
-    }
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
   return (
     <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden', background: 'var(--bg)' }}>
-      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.6 }} />
+      <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, opacity: 0.8 }}>
+        <Radar 
+          speed={1.0}
+          scale={0.5}
+          ringCount={10}
+          spokeCount={10}
+          ringThickness={0.05}
+          spokeThickness={0.01}
+          sweepSpeed={1.0}
+          sweepWidth={2.0}
+          sweepLobes={1}
+          color="#00d4ff"
+          backgroundColor="#000000"
+          falloff={2.0}
+          brightness={1.0}
+          enableMouseInteraction={true}
+          mouseInfluence={0.1}
+        />
+      </div>
 
       {/* Hero content */}
-      <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(100px,12vh,160px) clamp(24px, 8vw, 96px) 60px' }}>
+      <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(100px,12vh,160px) clamp(24px, 8vw, 96px) 60px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         {/* Label */}
         <div className="label-caps-gold" style={{ marginBottom: 32, opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.1s' }}>
           [ {t('home.hero_label')} ]
@@ -81,7 +70,7 @@ function HeroSection() {
         </p>
 
         {/* CTAs */}
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.65s' }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center', opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.65s' }}>
           <button className="btn-sos" onClick={() => navigate('/sos')} data-cursor="sos" style={{ fontSize: 16 }}>
             {t('home.cta_sos')}
           </button>
@@ -118,16 +107,18 @@ function HeroSection() {
 
 /* ── Mission Section ────────────────────────────── */
 function MissionSection() {
-  const { value: users, ref: r1 } = useNumberCounter(1247);
-  const { value: incidents, ref: r2 } = useNumberCounter(392);
-  const { value: cities, ref: r3 } = useNumberCounter(48);
-  const { value: response, ref: r4 } = useNumberCounter(42);
+  const { activeUsers, resolved, cities, avgResponse } = useHomeStats();
+
+  const { value: users, ref: r1 } = useNumberCounter(activeUsers);
+  const { value: incidents, ref: r2 } = useNumberCounter(resolved);
+  const { value: citiesCount, ref: r3 } = useNumberCounter(cities);
+  const { value: responseTime, ref: r4 } = useNumberCounter(avgResponse);
 
   const stats = [
     { ref: r1, value: users, label: 'Active Users', suffix: '+' },
     { ref: r2, value: incidents, label: 'Resolved', suffix: '+' },
-    { ref: r3, value: cities, label: 'Cities', suffix: '' },
-    { ref: r4, value: response / 10, label: 'Avg Response', suffix: ' min' },
+    { ref: r3, value: citiesCount, label: 'Cities', suffix: '' },
+    { ref: r4, value: responseTime / 10, label: 'Avg Response', suffix: ' min' },
   ];
 
   return (
@@ -168,63 +159,67 @@ function MissionSection() {
 
 /* ── Platform Preview ───────────────────────────── */
 function PlatformPreview() {
+  const navigate = useNavigate();
   return (
     <section style={{ padding: 'clamp(60px, 8vh, 80px) clamp(24px, 6vw, 64px)', background: 'var(--bg-surface)', position: 'relative', overflow: 'hidden' }}>
       <div style={{ textAlign: 'center', marginBottom: 48 }}>
-        <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 5vw, 72px)', color: 'var(--text-primary)', margin: '0 0 16px' }}>
+        <span className="label-caps">[ 002 — PLATFORM ]</span>
+        <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 5vw, 72px)', color: 'var(--text-primary)', margin: '16px 0 32px' }}>
           Real-time. Everywhere. Always.
         </h2>
-        <span className="label-caps">[ COMMAND CENTER PREVIEW ]</span>
+        
+        {/* Toggle buttons */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 48, flexWrap: 'wrap' }}>
+           <button style={{ background: 'transparent', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', padding: '8px 24px', borderRadius: 999, fontSize: 14, fontFamily: 'DM Sans' }}>Live Map</button>
+           <button style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', padding: '8px 24px', borderRadius: 999, fontSize: 14, fontFamily: 'DM Sans' }}>SOS Engine</button>
+           <button style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', padding: '8px 24px', borderRadius: 999, fontSize: 14, fontFamily: 'DM Sans' }}>Volunteers</button>
+        </div>
       </div>
 
-      {/* Mock dashboard */}
-      <div className="glass-card animate-float-drift" style={{ maxWidth: 960, margin: '0 auto', padding: 0, overflow: 'hidden' }}>
-        {/* Header bar */}
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.3)' }}>
-          <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--text-muted)' }}>ResQ AI Command Center — v2.4.1</span>
-          <span className="badge-live">🟢 LIVE</span>
-        </div>
-
-        {/* Mock content */}
-        <div style={{ display: 'flex', height: 280 }}>
-          {/* Map area */}
-          <div style={{ flex: 1, background: 'rgba(0,0,0,0.4)', position: 'relative', overflow: 'hidden' }}>
-            {/* Fake map grid */}
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(0deg, var(--glass-border) 0, var(--glass-border) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, var(--glass-border) 0, var(--glass-border) 1px, transparent 1px, transparent 40px)', opacity: 0.3 }} />
-            {/* Fake markers */}
-            {[{ x: '30%', y: '40%', c: 'var(--accent-red)' }, { x: '55%', y: '60%', c: 'var(--accent-orange)' }, { x: '70%', y: '30%', c: 'var(--accent-red)' }, { x: '20%', y: '70%', c: 'var(--accent-orange)' }].map((m, i) => (
-              <div key={i} style={{ position: 'absolute', left: m.x, top: m.y, width: 12, height: 12, borderRadius: '50%', background: m.c, boxShadow: `0 0 16px ${m.c}`, animation: 'pulse-dot 2s ease infinite', animationDelay: `${i * 0.4}s` }} />
-            ))}
-            <div style={{ position: 'absolute', bottom: 12, left: 12 }}>
-              <span className="label-caps" style={{ color: 'var(--accent-cyan)' }}>[ MAP VIEW — INDIA ]</span>
+      {/* New specific card */}
+      <div className="glass-card" style={{ maxWidth: 960, margin: '0 auto', padding: 32 }}>
+        <span className="label-caps" style={{ color: 'var(--accent-cyan)', display: 'block', marginBottom: 24 }}>[ 001 — LIVE MAP ]</span>
+        
+        {/* Banner area */}
+        <div style={{ position: 'relative', height: 220, borderRadius: 12, overflow: 'hidden', background: '#0a0d14', display: 'flex', alignItems: 'center', padding: '0 40px', marginBottom: 40, border: '1px solid var(--glass-border)' }}>
+          {/* Background grid & gradients */}
+          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 30px), repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 30px)' }} />
+          <div style={{ position: 'absolute', left: '0%', top: '0', bottom: '0', width: '35%', background: 'radial-gradient(circle at center, rgba(255,40,40,0.3) 0%, transparent 70%)' }} />
+          <div style={{ position: 'absolute', left: '35%', top: '0%', bottom: '0%', width: '30%', background: 'radial-gradient(circle at center, rgba(255,160,0,0.3) 0%, transparent 70%)' }} />
+          <div style={{ position: 'absolute', right: '0%', top: '0', bottom: '0', width: '35%', background: 'radial-gradient(circle at center, rgba(0,212,255,0.3) 0%, transparent 70%)' }} />
+          
+          <div style={{ position: 'absolute', top: 24, left: 40, fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--text-dim)' }}>
+            GDACS_LIVE_STREAM
+          </div>
+          
+          <div style={{ position: 'absolute', top: 24, right: 40, background: 'rgba(255,40,40,0.1)', border: '1px solid rgba(255,40,40,0.2)', color: 'var(--accent-red)', padding: '4px 12px', borderRadius: 999, fontSize: 10, fontFamily: 'JetBrains Mono', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-red)', animation: 'pulse-dot 2s ease infinite' }} />
+            SYNCED
+          </div>
+          
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'baseline', gap: 24, marginTop: 32 }}>
+            <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(56px, 8vw, 84px)', color: 'var(--text-primary)', lineHeight: 1 }}>
+              14.2k
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>PEOPLE AFFECTED</span>
+              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--accent-red)' }}>SEV_3 // RADIUS: 45KM</span>
             </div>
           </div>
-
-          {/* Sidebar */}
-          <div style={{ width: 200, borderLeft: '1px solid var(--glass-border)', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span className="label-caps" style={{ marginBottom: 4 }}>RECENT ALERTS</span>
-            {[
-              { id: 'RSQ-001', label: 'Assam Flood', sev: 'critical' },
-              { id: 'RSQ-003', label: 'Mumbai Collapse', sev: 'critical' },
-              { id: 'RSQ-006', label: 'Puri Flood', sev: 'critical' },
-            ].map(item => (
-              <div key={item.id} className="glass-card-elevated" style={{ padding: '8px 10px', borderLeft: '3px solid var(--accent-red)' }}>
-                <div style={{ fontSize: 10, fontFamily: 'JetBrains Mono', color: 'var(--text-muted)' }}>{item.id}</div>
-                <div style={{ fontSize: 11, fontFamily: 'DM Sans', fontWeight: 500, color: 'var(--text-primary)', marginTop: 2 }}>{item.label}</div>
-                <span className={`badge-${item.sev}`} style={{ marginTop: 4, display: 'inline-block' }}>{item.sev}</span>
-              </div>
-            ))}
-          </div>
         </div>
-      </div>
 
-      {/* Feature pills */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 40, flexWrap: 'wrap' }}>
-        {['⚡ Live Incident Feed', '🤖 AI Risk Heatmap', '📵 Offline-First'].map(f => (
-          <div key={f} className="glass-card" style={{ padding: '10px 24px', borderRadius: 999 }}>
-            <span style={{ fontFamily: 'DM Sans', fontSize: 14, color: 'var(--text-primary)' }}>{f}</span>
+        {/* Text and Button area */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 40, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 300 }}>
+            <h3 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 32, color: 'var(--text-primary)', margin: '0 0 16px' }}>Incident Radius Map</h3>
+            <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.7, margin: 0, maxWidth: 640 }}>
+              Every active disaster in India visualized as an impact radius — not a pin. The circle scales with the number of people affected and severity level, pulling live data from GDACS.
+            </p>
           </div>
-        ))}
+          <button className="btn-outline-cyan" onClick={() => navigate('/map')} style={{ flexShrink: 0, fontSize: 15, padding: '12px 28px' }}>
+            View Live Map →
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -349,35 +344,6 @@ function DataSourcesMarquee() {
   );
 }
 
-/* ── Awards ─────────────────────────────────────── */
-function AwardsSection() {
-  const cardsRef = useStaggeredReveal(120);
-  const AWARDS = [
-    { icon: '🏆', title: 'Awwwards Nominee', sub: 'Site of the Day — 2024' },
-    { icon: '🥇', title: '2× Hackathon Winner', sub: 'National Disaster Tech Challenge' },
-    { icon: '🌟', title: '500+ Beta Users', sub: 'Across 12 Indian states' },
-  ];
-  return (
-    <section style={{ padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', background: 'var(--bg)' }}>
-      <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 5vw, 72px)', color: 'var(--text-primary)', margin: '0 0 16px', textAlign: 'center' }}>
-        built for impact
-      </h2>
-      <p style={{ fontFamily: 'DM Sans', fontSize: 18, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 56 }}>
-        Recognized by the global design and disaster response community.
-      </p>
-      <div ref={cardsRef as React.RefObject<HTMLDivElement>} style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
-        {AWARDS.map((a, i) => (
-          <div key={i} className="glass-card" style={{ padding: '36px 40px', textAlign: 'center', maxWidth: 280, flex: '1 1 220px' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>{a.icon}</div>
-            <h3 style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', margin: '0 0 8px' }}>{a.title}</h3>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>{a.sub}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 /* ── CTA ─────────────────────────────────────────── */
 function StartMissionCTA() {
   const navigate = useNavigate();
@@ -432,7 +398,6 @@ export default function Home() {
       <HowItWorks />
       <FeaturesGrid />
       <DataSourcesMarquee />
-      <AwardsSection />
       <StartMissionCTA />
     </div>
   );

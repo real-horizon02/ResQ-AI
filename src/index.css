@@ -135,8 +135,8 @@
     position: fixed;
     bottom: 32px;
     right: 32px;
-    width: 64px;
-    height: 64px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     background: var(--accent-red);
     border: none;
@@ -145,7 +145,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 24px rgba(255,45,45,0.4);
+    box-shadow: 0 0 28px rgba(255,45,45,0.45);
+    user-select: none;
+    -webkit-user-select: none;
   }
   .floating-sos::before, .floating-sos::after {
     content: '';
@@ -156,6 +158,95 @@
     animation: sos-ring 2s ease-out infinite;
   }
   .floating-sos::after { animation-delay: 0.6s; }
+
+  /* SVG ring sits on top of button background */
+  .sos-progress-ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+  }
+  /* Keep icon above the SVG */
+  .floating-sos > svg + * { position: relative; z-index: 2; }
+
+  /* ── SOS Popup Modal ─────────────────────────────── */
+  .sos-popup-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fade-in-overlay 0.25s ease;
+  }
+  @keyframes fade-in-overlay {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .sos-popup-card {
+    background: linear-gradient(145deg, #0D1525 0%, #141E30 100%);
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    border-radius: 24px;
+    padding: 48px 40px 36px;
+    max-width: 360px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(0, 230, 118, 0.15), 0 24px 64px rgba(0,0,0,0.6);
+    animation: pop-in 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: scale(0.75) translateY(30px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .sos-popup-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(0, 230, 118, 0.12);
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    margin: 0 auto 20px;
+    animation: icon-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes icon-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,0.25); }
+    50%       { box-shadow: 0 0 0 12px rgba(0,230,118,0); }
+  }
+  .sos-popup-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 10px;
+  }
+  .sos-popup-msg {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin: 0 0 28px;
+  }
+  .sos-popup-close {
+    display: inline-block;
+    padding: 12px 36px;
+    border-radius: 999px;
+    background: var(--accent-green);
+    color: #06090F;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .sos-popup-close:hover { opacity: 0.88; transform: scale(1.03); }
 
   /* ── Underline Input ─────────────────────────────── */
   .input-underline {

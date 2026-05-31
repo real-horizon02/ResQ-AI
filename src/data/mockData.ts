@@ -1,5 +1,5 @@
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
-export type IncidentType = 'flood' | 'earthquake' | 'fire' | 'medical' | 'landslide' | 'cyclone' | 'collapse' | 'gas-leak' | 'heatwave';
+export type IncidentType = 'flood' | 'earthquake' | 'fire' | 'medical' | 'landslide' | 'cyclone' | 'collapse' | 'gas-leak' | 'heatwave' | 'tsunami' | 'rainfall';
 export type IncidentStatus = 'pending' | 'verified' | 'dispatched' | 'resolved';
 
 export interface Incident {
@@ -76,5 +76,5 @@ export const ACTIVITY_FEED_TEMPLATES: ActivityEntry[] = [
 
 export const TYPE_EMOJIS: Record<string, string> = {
   flood: '🌊', earthquake: '🏚️', fire: '🔥', medical: '🏥',
-  landslide: '⛰️', cyclone: '🌀', collapse: '🏗️', 'gas-leak': '☢️', heatwave: '☀️',
+  landslide: '⛰️', cyclone: '🌀', collapse: '🏗️', 'gas-leak': '☢️', heatwave: '☀️', tsunami: '🌊⚠️', rainfall: '🌧️',
 };

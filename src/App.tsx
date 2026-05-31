@@ -1,5 +1,11 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Routes,
+  Route,
+  Outlet,
+} from 'react-router-dom';
 import { useLenis } from './hooks/useLenis';
 import { CustomCursor } from './components/ui/CustomCursor';
 import { PageTransition } from './components/ui/PageTransition';
@@ -18,7 +24,7 @@ import AuthPage from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
 import ProfilePage from './pages/Profile';
 
-function AppInner() {
+function Layout() {
   useLenis();
   const { initialize } = useAuthStore();
 
@@ -34,28 +40,40 @@ function AppInner() {
       <FloatingSOS />
       <ToastContainer />
       <PageTransition>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/sos" element={<SOSPage />} />
-          <Route path="/volunteer" element={<VolunteerPage />} />
-          <Route path="/admin" element={<AdminGuard><AdminPage /></AdminGuard>} />
-          <Route path="/auth" element={<AuthPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="*" element={<Home />} />
-        </Routes>
+        <Outlet />
       </PageTransition>
     </>
   );
 }
 
+const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      element: <Layout />,
+      children: [
+        { index: true, element: <Home /> },
+        { path: 'map', element: <MapPage /> },
+        { path: 'sos', element: <SOSPage /> },
+        { path: 'volunteer', element: <VolunteerPage /> },
+        { path: 'admin', element: <AdminGuard><AdminPage /></AdminGuard> },
+        { path: 'auth', element: <AuthPage /> },
+        { path: 'auth/callback', element: <AuthCallback /> },
+        { path: 'profile', element: <ProfilePage /> },
+        { path: '*', element: <Home /> },
+      ],
+    },
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    },
+  } as any
+);
+
 function App() {
-  return (
-    <Router>
-      <AppInner />
-    </Router>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;

@@ -11,7 +11,7 @@ interface AppStore {
 }
 
 export const useAppStore = create<AppStore>((set) => ({
-  incidents: INCIDENTS,
+  incidents: [],
   volunteers: VOLUNTEERS,
   activityFeed: ACTIVITY_FEED_TEMPLATES,
   updateIncidentStatus: (id, status) =>
