@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import {
+  BellElectric,
+  BarChart3,
+  BrainCircuit,
+  RadioTower,
+  ShieldCheck,
+  WifiOff,
+} from 'lucide-react';
 import { Navbar } from '../components/Navbar';
 import { useNumberCounter } from '../hooks/useNumberCounter';
 import { useStaggeredReveal } from '../hooks/useStaggeredReveal';
@@ -295,17 +303,59 @@ function HowItWorks() {
 function FeaturesGrid() {
   const gridRef = useStaggeredReveal(100);
   const FEATURES = [
-    { icon: '📡', title: 'Real-Time Monitoring', desc: 'Live data from USGS, IMD, NASA FIRMS — updated every 5 minutes.' },
-    { icon: '🚨', title: 'Sub-Second SOS', desc: 'One tap sends GPS location to NDRF + local volunteers instantly.' },
-    { icon: '🤖', title: 'AI Risk Heatmaps', desc: 'XGBoost flood prediction overlays with confidence intervals.' },
-    { icon: '📵', title: 'Offline-First', desc: 'Works without internet. Reports queue and sync on reconnect.' },
-    { icon: '🛡️', title: 'Volunteer Network', desc: 'Verified first responders dispatched within 5km using PostGIS.' },
-    { icon: '📊', title: 'Command Center', desc: 'Real-time incident management, resource allocation, alerts.' },
+    {
+      Icon: RadioTower,
+      code: 'LIVE-05',
+      title: 'Real-Time Monitoring',
+      desc: 'Live data from USGS, IMD, NASA FIRMS - refreshed every 5 minutes.',
+      metric: '5m',
+      tone: 'cyan',
+    },
+    {
+      Icon: BellElectric,
+      code: 'SOS-01',
+      title: 'Sub-Second SOS',
+      desc: 'One tap sends GPS location to NDRF and nearby volunteers instantly.',
+      metric: '<1s',
+      tone: 'red',
+    },
+    {
+      Icon: BrainCircuit,
+      code: 'RISK-ML',
+      title: 'AI Risk Heatmaps',
+      desc: 'XGBoost flood prediction overlays with confidence intervals.',
+      metric: 'AI',
+      tone: 'gold',
+    },
+    {
+      Icon: WifiOff,
+      code: 'OFF-NET',
+      title: 'Offline-First',
+      desc: 'Reports queue without internet, then sync cleanly on reconnect.',
+      metric: '0G',
+      tone: 'green',
+    },
+    {
+      Icon: ShieldCheck,
+      code: 'VOL-5K',
+      title: 'Volunteer Network',
+      desc: 'Verified first responders dispatched within 5km using PostGIS.',
+      metric: '5km',
+      tone: 'cyan',
+    },
+    {
+      Icon: BarChart3,
+      code: 'CMD-24',
+      title: 'Command Center',
+      desc: 'Live incident management, resource allocation, and alert routing.',
+      metric: '24/7',
+      tone: 'red',
+    },
   ];
 
   return (
     <section style={{ padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', background: 'var(--bg-surface)' }}>
-      <div style={{ marginBottom: 48 }}>
+      <div style={{ margin: '0 auto 48px', textAlign: 'center', maxWidth: 760 }}>
         <span className="label-caps-gold">[ 002 — FEATURES ]</span>
         <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(32px, 4vw, 56px)', color: 'var(--text-primary)', margin: '12px 0 0' }}>
           purpose-built for crisis
@@ -313,28 +363,24 @@ function FeaturesGrid() {
       </div>
       <div
         ref={gridRef as React.RefObject<HTMLDivElement>}
-        className="desktop-grid-2x3"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}
+        className="features-stack"
       >
         {FEATURES.map((f, i) => (
-          <div
-            key={i}
-            className="glass-card"
-            style={{ padding: 28, cursor: 'none', transition: 'transform 0.3s ease, border-color 0.3s ease' }}
-            onMouseEnter={(e) => {
-              const t = e.currentTarget;
-              t.style.transform = 'translateY(-8px)';
-              t.style.borderColor = 'rgba(0,212,255,0.25)';
-            }}
-            onMouseLeave={(e) => {
-              const t = e.currentTarget;
-              t.style.transform = 'translateY(0)';
-              t.style.borderColor = 'var(--glass-border)';
-            }}
-          >
-            <div style={{ fontSize: 36, marginBottom: 16 }}>{f.icon}</div>
-            <h3 style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 18, color: 'var(--text-primary)', margin: '0 0 10px' }}>{f.title}</h3>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>{f.desc}</p>
+          <div key={f.code} className={`feature-module feature-module--${f.tone}`}>
+            <span className="feature-module__number" aria-hidden="true">
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <div className="feature-module__main">
+              <span className="feature-module__code">{f.code}</span>
+              <div className="feature-module__icon">
+                <f.Icon size={25} strokeWidth={1.8} />
+              </div>
+              <div className="feature-module__copy">
+                <h3>{f.title}</h3>
+                <p>{f.desc}</p>
+              </div>
+              <span className="feature-module__metric">{f.metric}</span>
+            </div>
           </div>
         ))}
       </div>

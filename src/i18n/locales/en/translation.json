@@ -1,0 +1,61 @@
+{
+  "common": {
+    "app_name": "ResQ AI",
+    "sos": "SOS EMERGENCY",
+    "get_help": "GET HELP NOW",
+    "sign_in": "Sign In",
+    "volunteer": "Become a Volunteer"
+  },
+  "nav": {
+    "map": "Disaster Map",
+    "volunteer": "Volunteer",
+    "safe_zones": "Safe Zones",
+    "reports": "Incident Reports"
+  },
+  "header": {
+    "dashboard": "Dashboard",
+    "liveMap": "Live Map",
+    "report": "Report",
+    "profile": "Profile",
+    "signIn": "Sign In",
+    "commandCenter": "Command Center",
+    "myTasks": "My Tasks"
+  },
+  "home": {
+    "hero_label": "INDIA'S EMERGENCY RESPONSE PLATFORM",
+    "hero_when": "when",
+    "hero_seconds": "seconds",
+    "hero_matter": "matter,",
+    "hero_data": "data",
+    "hero_saves": "saves lives",
+    "hero_subtitle": "AI-powered disaster coordination platform for a resilient India. Real-time. Everywhere. Always.",
+    "cta_sos": "🚨 Send SOS",
+    "cta_map": "View Live Map →"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "remember_me": "Remember Me",
+    "forgot_password": "Forgot Password"
+  },
+  "errors": {
+    "loading": "Loading",
+    "error": "Error",
+    "not_found": "Not Found",
+    "unauthorized": "Unauthorized",
+    "server_error": "Server Error"
+  },
+  "common_actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter"
+  }
+}

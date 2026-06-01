@@ -1,0 +1,61 @@
+{
+  "common": {
+    "app_name": "[TRANSLATE: ResQ AI]",
+    "sos": "SOS Aapatkaaleen",
+    "get_help": "Ab Madad Lo",
+    "sign_in": "Sign In Karo",
+    "volunteer": "Volunteer Bano"
+  },
+  "nav": {
+    "map": "Aapadaa Map",
+    "volunteer": "Volunteer",
+    "safe_zones": "Surakshit Kshetr",
+    "reports": "Ghatna Reports"
+  },
+  "header": {
+    "dashboard": "Dashboard",
+    "liveMap": "Live Map",
+    "report": "Report Karo",
+    "profile": "Profile",
+    "signIn": "Sign In Karo",
+    "commandCenter": "Command Center",
+    "myTasks": "Mere Kaam"
+  },
+  "home": {
+    "hero_label": "Bharat Ka Aapatkaaleen Pratikrya Manch",
+    "hero_when": "Jab",
+    "hero_seconds": "Sekand",
+    "hero_matter": "[TRANSLATE: matter,]",
+    "hero_data": "Data",
+    "hero_saves": "Jeevan Bachata Hai",
+    "hero_subtitle": "[TRANSLATE: AI-powered disaster coordination platform for a resilient India. Real-time. Everywhere. Always.]",
+    "cta_sos": "[TRANSLATE: 🚨 Send SOS]",
+    "cta_map": "[TRANSLATE: View Live Map →]"
+  },
+  "auth": {
+    "login": "Log In Karo",
+    "logout": "Log Out Karo",
+    "signup": "[TRANSLATE: Sign Up]",
+    "email": "[TRANSLATE: Email]",
+    "password": "[TRANSLATE: Password]",
+    "remember_me": "[TRANSLATE: Remember Me]",
+    "forgot_password": "[TRANSLATE: Forgot Password]"
+  },
+  "errors": {
+    "loading": "Load Ho Raha Hai",
+    "error": "Galti",
+    "not_found": "[TRANSLATE: Not Found]",
+    "unauthorized": "[TRANSLATE: Unauthorized]",
+    "server_error": "[TRANSLATE: Server Error]"
+  },
+  "common_actions": {
+    "save": "Save Karo",
+    "cancel": "Cancel",
+    "delete": "Delete Karo",
+    "edit": "Edit Karo",
+    "close": "Band Karo",
+    "submit": "Jama Karo",
+    "search": "Khojo",
+    "filter": "[TRANSLATE: Filter]"
+  }
+}
