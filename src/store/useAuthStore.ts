@@ -14,6 +14,11 @@ export interface UserProfile {
   admin_approved: boolean;
   admin_request: boolean;
   avatar_url: string | null;
+  age?: number | null;
+  phone_number?: string | null;
+  is_volunteer?: boolean;
+  onboarded?: boolean;
+  location?: any;
 }
 
 interface AuthStore {
@@ -23,13 +28,14 @@ interface AuthStore {
   initialized: boolean;
   isAdmin: boolean;
   isLoggedIn: boolean;
+  _authSubscription: { unsubscribe: () => void } | null;
   initialize: () => Promise<void>;
   signInWithOAuth: (provider: 'google' | 'facebook' | 'twitter' | 'apple') => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string, role: UserRole) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, role: string) => Promise<string>;
   signOut: () => Promise<void>;
   fetchProfile: (userId: string, userEmail?: string, userMeta?: any) => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>, userIdOverride?: string) => Promise<void>;
   requestAdminAccess: () => Promise<void>;
 }
 
@@ -43,8 +49,13 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
   initialized: false,
   isAdmin: false,
   isLoggedIn: false,
+  _authSubscription: null,
 
   initialize: async () => {
+    // Prevent duplicate subscriptions
+    const existing = get()._authSubscription;
+    if (existing) existing.unsubscribe();
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -56,7 +67,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
     }
     set({ initialized: true });
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         set({ user: session.user, isLoggedIn: true });
         await get().fetchProfile(session.user.id, session.user.email, session.user.user_metadata);
@@ -64,6 +75,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         set({ user: null, profile: null, isAdmin: false, isLoggedIn: false });
       }
     });
+    set({ _authSubscription: subscription });
   },
 
   fetchProfile: async (userId, userEmail, userMeta) => {
@@ -85,11 +97,15 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       // Profile doesn't exist yet — create it
       const email = userEmail || get().user?.email || '';
       const isSuper = email === SUPER_ADMIN_EMAIL;
+      
+      const pendingRole = localStorage.getItem('pending_signup_role');
+      if (pendingRole) localStorage.removeItem('pending_signup_role');
+      
       const newProfile: Partial<UserProfile> = {
         id: userId,
         full_name: userMeta?.full_name || userMeta?.name || (isSuper ? SUPER_ADMIN_NAME : email.split('@')[0]),
         email,
-        role: isSuper ? 'admin' : 'citizen',
+        role: (isSuper ? 'admin' : (pendingRole || 'citizen')) as UserRole,
         admin_approved: isSuper,
         admin_request: false,
         skills: [],
@@ -144,34 +160,52 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
           id: data.user.id,
           full_name: fullName,
           email,
-          role: isSuper ? 'admin' : role,
+          role: (isSuper ? 'admin' : role) as UserRole,
           admin_approved: isSuper,
           admin_request: false,
           skills: [],
         };
-        await supabase.from('profiles').upsert(profile);
+        // Only set local store — the real DB upsert happens in the onboarding
+        // form submit with the full profile data. Doing it here fails with 401
+        // when Supabase email confirmation is enabled (no session yet).
         set({ user: data.user, profile: profile as UserProfile, isAdmin: isSuper, isLoggedIn: true });
+        return data.user.id;
       }
+      return '';
     } finally {
       set({ loading: false });
     }
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
+    // Clear state immediately (optimistic) so the UI responds right away
     set({ user: null, profile: null, isAdmin: false, isLoggedIn: false });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) console.warn('Supabase signOut error:', error.message);
+    } catch (e) {
+      console.warn('signOut exception:', e);
+    }
   },
 
-  updateProfile: async (updates) => {
-    const userId = get().user?.id;
-    if (!userId) return;
-    const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
-    if (!error) {
-      set((s) => {
-        const newProfile = s.profile ? { ...s.profile, ...updates } : null;
-        return { profile: newProfile, isAdmin: newProfile?.role === 'admin' };
-      });
+  updateProfile: async (updates, userIdOverride) => {
+    const userId = userIdOverride || get().user?.id;
+    if (!userId) {
+      console.error('updateProfile: no userId available');
+      throw new Error('User is not authenticated. Please try again.');
     }
+    // Use upsert so it works whether the row exists or not,
+    // and works even when email confirmation hasn't settled yet.
+    const payload = { ...updates, id: userId };
+    const { error } = await supabase.from('profiles').upsert(payload);
+    if (error) {
+      console.error('updateProfile upsert error:', error.message, error.details);
+      throw new Error(error.message);
+    }
+    set((s) => {
+      const newProfile = s.profile ? { ...s.profile, ...updates } : null;
+      return { profile: newProfile, isAdmin: newProfile?.role === 'admin' };
+    });
   },
 
   requestAdminAccess: async () => {

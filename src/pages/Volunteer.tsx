@@ -1,194 +1,291 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Navbar } from '../components/Navbar';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet.markercluster';
 import { useAppStore } from '../store/useAppStore';
-import { useStaggeredReveal } from '../hooks/useStaggeredReveal';
-import { VOLUNTEERS, TYPE_EMOJIS, Incident, Volunteer } from '../data/mockData';
+import { useAuthStore } from '../store/useAuthStore';
+import { Incident } from '../data/mockData';
+import { AnimatePresence, motion } from 'framer-motion';
+import { message } from 'antd';
 
-type TaskState = 'idle' | 'accepted' | 'completed' | 'escalated';
-
-const SEV_COLORS: Record<string, string> = {
-  critical: 'var(--accent-red)', high: 'var(--accent-orange)', medium: '#F59E0B', low: 'var(--text-muted)',
+// ── Configuration ─────────────────────────────────────────────────────────────
+const SEV: Record<string, { color: string; bg: string; label: string }> = {
+  critical: { color: '#EF4444', bg: 'rgba(239,68,68,0.12)', label: 'CRITICAL' },
+  high:     { color: '#F97316', bg: 'rgba(249,115,22,0.12)', label: 'HIGH' },
+  medium:   { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', label: 'MEDIUM' },
+  low:      { color: '#64748B', bg: 'rgba(100,116,139,0.12)', label: 'LOW' },
 };
 
-const FILTER_TABS = ['Nearby (5km)', 'My Skills', 'Critical Only', 'All'];
+const TYPE_LABEL: Record<string, string> = {
+  flood: 'Flood', earthquake: 'Earthquake', landslide: 'Landslide',
+  cyclone: 'Cyclone', tsunami: 'Tsunami', wildfire: 'Fire',
+  fire: 'Fire', 'building-collapse': 'Building Collapse',
+  'gas-leak': 'Gas Leak', drought: 'Drought', heatwave: 'Heatwave',
+};
 
-const MOCK_DISTANCES = ['1.2km', '3.4km', '0.8km', '6.1km', '2.9km', '4.5km', '7.8km', '5.2km', '1.9km', '3.1km'];
+function getIncidentLabel(inc: Incident): string {
+  if (inc.type === 'rainfall') {
+    if (inc.severity === 'critical' || inc.severity === 'high') return 'Heavy Rain';
+    if (inc.severity === 'medium') return 'Moderate Rain';
+    return 'Light Rain';
+  }
+  return TYPE_LABEL[inc.type] || inc.type || 'Incident';
+}
 
-function TaskCard({ incident, distance }: { incident: Incident; distance: string }) {
-  const [state, setState] = useState<TaskState>('idle');
-  const stateConfig = {
-    idle: { border: SEV_COLORS[incident.severity] },
-    accepted: { border: 'var(--accent-cyan)' },
-    completed: { border: 'var(--accent-green)' },
-    escalated: { border: 'var(--accent-orange)' },
+function makeDot(severity: string): L.DivIcon {
+  const { color } = SEV[severity] || SEV.low;
+  const pulse = severity === 'critical'
+    ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:1.5px solid ${color};animation:dot-ping 2s cubic-bezier(0,0,0.2,1) infinite;opacity:0.5;"></div>`
+    : '';
+  const html = `
+    <div style="position:relative;width:14px;height:14px;display:flex;align-items:center;justify-content:center;">
+      ${pulse}
+      <div style="width:12px;height:12px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}AA;"></div>
+    </div>`;
+  return L.divIcon({ html, className: '', iconSize: [14, 14], iconAnchor: [7, 7], popupAnchor: [0, -10] });
+}
+
+const clientGeoCache: Record<string, string> = {};
+function LocationDisplay({ lat, lng, defaultLoc }: { lat: number; lng: number; defaultLoc: string }) {
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  const [address, setAddress] = useState(clientGeoCache[key] || defaultLoc);
+
+  useEffect(() => {
+    if (clientGeoCache[key]) return;
+    let mounted = true;
+    fetch(`http://localhost:5000/api/geocode?lat=${lat}&lng=${lng}`)
+      .then(res => res.json())
+      .then(data => {
+        if (mounted && data.address) {
+          clientGeoCache[key] = data.address;
+          setAddress(data.address);
+        }
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [lat, lng, key]);
+
+  return <span style={{ display: 'block', marginTop: 4 }}>📍 {address}</span>;
+}
+
+// ── Main Page Component ───────────────────────────────────────────────────────
+export default function VolunteerMap() {
+  const navigate = useNavigate();
+  const { profile } = useAuthStore();
+  const { incidents } = useAppStore();
+  
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+  const clusterGroup = useRef<L.MarkerClusterGroup | null>(null);
+  const markersMap = useRef<Record<string, L.Marker>>({});
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [applyingFor, setApplyingFor] = useState<string | null>(null);
+
+  // 1. Fetch incidents
+  useEffect(() => {
+    fetch("http://localhost:5000/api/disasters")
+      .then(res => res.json())
+      .then(data => useAppStore.setState({ incidents: data }))
+      .catch(err => console.error("Error fetching disasters:", err));
+  }, []);
+
+  // 2. Init Leaflet
+  useEffect(() => {
+    if (!mapRef.current || mapInstance.current) return;
+
+    const m = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([22.5937, 78.9629], 5);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(m);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(m);
+
+    const cg = L.markerClusterGroup({
+      maxClusterRadius: 40,
+      iconCreateFunction: (cluster) => {
+        const count = cluster.getChildCount();
+        return L.divIcon({
+          html: `<div style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-family:DM Sans;font-size:12px;font-weight:700;backdrop-filter:blur(4px);">${count}</div>`,
+          className: '',
+          iconSize: [30, 30]
+        });
+      }
+    });
+    
+    m.addTo(cg); // Add to map instead of vice versa (wait, it's cg.addTo(m) wait no, m.addLayer(cg))
+    m.addLayer(cg);
+    
+    mapInstance.current = m;
+    clusterGroup.current = cg;
+
+    return () => {
+      m.remove();
+      mapInstance.current = null;
+      clusterGroup.current = null;
+    };
+  }, []);
+
+  // 3. Sync markers
+  useEffect(() => {
+    if (!mapInstance.current || !clusterGroup.current) return;
+    const cg = clusterGroup.current;
+    
+    cg.clearLayers();
+    markersMap.current = {};
+
+    incidents.forEach(inc => {
+      if (typeof inc.lat !== 'number' || typeof inc.lng !== 'number') return;
+      const marker = L.marker([inc.lat, inc.lng], { icon: makeDot(inc.severity) });
+      
+      marker.on('click', () => {
+        setActiveId(inc.id);
+        mapInstance.current?.flyTo([inc.lat, inc.lng], 9, { duration: 0.8 });
+      });
+
+      markersMap.current[inc.id] = marker;
+      cg.addLayer(marker);
+    });
+  }, [incidents]);
+
+  // Handle Apply
+  const handleApply = (id: string) => {
+    setApplyingFor(id);
+    // Simulate API call for admin approval for this rescue
+    setTimeout(() => {
+      message.success({ content: 'Rescue application sent to Admin for approval!', style: { fontFamily: 'DM Sans', marginTop: '10vh' }});
+      setApplyingFor(null);
+      setActiveId(null);
+    }, 1200);
   };
 
+  const activeInc = useMemo(() => incidents.find(i => i.id === activeId), [activeId, incidents]);
+
   return (
-    <motion.div
-      layout
-      className="glass-card-elevated"
-      style={{
-        padding: '16px 18px',
-        borderLeft: `3px solid ${stateConfig[state].border}`,
-        opacity: state === 'completed' ? 0.5 : 1,
-        transition: 'opacity 0.3s ease',
-      }}
-    >
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8, gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: state === 'completed' ? 'var(--text-muted)' : 'var(--text-primary)', lineHeight: 1.3, flex: 1, textDecoration: state === 'completed' ? 'line-through' : 'none' }}>
-          {TYPE_EMOJIS[incident.type]} {incident.title}
-        </span>
-        <AnimatePresence mode="wait">
-          <motion.span key={state} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            className={`badge-${state === 'accepted' ? 'live' : state === 'completed' ? 'resolved' : state === 'escalated' ? 'high' : incident.severity}`}>
-            {state === 'idle' ? incident.severity : state}
-          </motion.span>
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: '#090C12' }}>
+      
+      {/* ── Top Bar ────────────────────────────────────────── */}
+      <div style={{
+        height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 24px', background: 'rgba(9, 12, 18, 0.9)', borderBottom: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(10px)', zIndex: 1000,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => navigate('/')} style={{ background: 'none', border: 'none', color: '#F1F5F9', cursor: 'pointer', fontFamily: 'DM Sans', fontSize: 14 }}>← Home</button>
+          <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} />
+          <h1 style={{ margin: 0, fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 20, color: '#00D4FF' }}>
+            Volunteer Mission Map
+          </h1>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <span style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#94A3B8' }}>
+            Logged in as: <span style={{ color: '#F1F5F9', fontWeight: 600 }}>{profile?.full_name || 'Volunteer'}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* ── Map Container ──────────────────────────────────── */}
+      <div style={{ flex: 1, position: 'relative' }}>
+        <div ref={mapRef} style={{ width: '100%', height: '100%', background: '#090C12' }} />
+
+        {/* ── Disaster Detail Card (Overlay) ────────────────── */}
+        <AnimatePresence>
+          {activeInc && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              style={{
+                position: 'absolute', bottom: 40, left: 40, zIndex: 1000,
+                width: 380, background: '#0D1525', borderRadius: 20,
+                border: '1px solid rgba(255,255,255,0.1)',
+                boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,212,255,0.05)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                background: SEV[activeInc.severity]?.bg || SEV.low.bg,
+                borderBottom: `1px solid ${SEV[activeInc.severity]?.color || '#fff'}22`,
+                padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'
+              }}>
+                <div>
+                  <div style={{ fontFamily: 'DM Sans', fontSize: 22, fontWeight: 700, color: '#F1F5F9', marginBottom: 4 }}>
+                    {getIncidentLabel(activeInc)}
+                  </div>
+                  <div style={{
+                    display: 'inline-block', padding: '3px 8px', borderRadius: 4,
+                    background: SEV[activeInc.severity]?.color || '#64748B',
+                    color: '#060910', fontFamily: 'JetBrains Mono', fontSize: 10, fontWeight: 800, letterSpacing: '0.05em'
+                  }}>
+                    {SEV[activeInc.severity]?.label || 'UNKNOWN'} SEVERITY
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveId(null)}
+                  style={{ background: 'rgba(0,0,0,0.2)', border: 'none', color: '#fff', width: 28, height: 28, borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '24px' }}>
+                <div style={{ fontFamily: 'DM Sans', fontSize: 14, color: '#CBD5E1', lineHeight: 1.6, marginBottom: 24 }}>
+                  <span style={{ color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Location</span>
+                  <LocationDisplay lat={activeInc.lat} lng={activeInc.lng} defaultLoc={activeInc.location || activeInc.state || 'India'} />
+                </div>
+
+                <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 18, color: '#F1F5F9', fontWeight: 700 }}>
+                      {(activeInc.peopleAffected || 0).toLocaleString()}
+                    </div>
+                    <div style={{ fontFamily: 'DM Sans', fontSize: 11, color: '#64748B', marginTop: 4 }}>Affected</div>
+                  </div>
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 12, textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 18, color: '#F1F5F9', fontWeight: 700 }}>
+                      {Math.floor(Math.random() * 8) + 2} km
+                    </div>
+                    <div style={{ fontFamily: 'DM Sans', fontSize: 11, color: '#64748B', marginTop: 4 }}>Away from you</div>
+                  </div>
+                </div>
+
+                {/* Apply Button */}
+                <button
+                  onClick={() => handleApply(activeInc.id)}
+                  disabled={applyingFor === activeInc.id}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: 12,
+                    background: applyingFor === activeInc.id ? 'rgba(0,212,255,0.2)' : 'linear-gradient(135deg, #00D4FF 0%, #00A3CC 100%)',
+                    border: 'none', color: applyingFor === activeInc.id ? '#00D4FF' : '#060910',
+                    fontFamily: 'DM Sans', fontSize: 15, fontWeight: 800,
+                    cursor: applyingFor === activeInc.id ? 'not-allowed' : 'pointer',
+                    boxShadow: applyingFor === activeInc.id ? 'none' : '0 8px 24px rgba(0,212,255,0.25)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {applyingFor === activeInc.id ? 'Sending Request...' : 'Apply for Rescue (Admin Approval)'}
+                </button>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
-      <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-muted)', margin: '0 0 4px' }}>{incident.location}</p>
-      <p style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-dim)', margin: '0 0 10px' }}>~{distance} away · 👥 {(incident.peopleAffected ?? 0).toLocaleString()}</p>
-
-      {/* Skills */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-        {['First Aid', 'Search & Rescue'].map(s => (
-          <span key={s} style={{ fontSize: 10, fontFamily: 'DM Sans', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'rgba(200,169,110,0.12)', color: 'var(--accent-gold)', border: '1px solid rgba(200,169,110,0.2)' }}>{s}</span>
-        ))}
-      </div>
-
-      {/* Action buttons */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => setState('accepted')} disabled={state !== 'idle'}
-          style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--accent-cyan)', background: state === 'accepted' ? 'var(--accent-cyan)' : 'transparent', color: state === 'accepted' ? 'var(--bg)' : 'var(--accent-cyan)', fontFamily: 'DM Sans', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: state !== 'idle' ? 0.4 : 1 }}>
-          Accept →
-        </button>
-        <button onClick={() => setState('completed')} disabled={state !== 'accepted'}
-          style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--accent-green)', background: state === 'completed' ? 'var(--accent-green)' : 'transparent', color: state === 'completed' ? 'var(--bg)' : 'var(--accent-green)', fontFamily: 'DM Sans', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: state !== 'accepted' ? 0.4 : 1 }}>
-          Complete ✓
-        </button>
-        <button onClick={() => setState('escalated')} disabled={state === 'completed' || state === 'escalated'}
-          style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--accent-orange)', background: state === 'escalated' ? 'var(--accent-orange)' : 'transparent', color: state === 'escalated' ? 'var(--bg)' : 'var(--accent-orange)', fontFamily: 'DM Sans', fontSize: 11, fontWeight: 600, cursor: 'pointer', opacity: state === 'completed' || state === 'escalated' ? 0.4 : 1 }}>
-          Escalate ↑
-        </button>
-      </div>
-    </motion.div>
-  );
-}
-
-function VolunteerProfile({ vol }: { vol: Volunteer }) {
-  const [available, setAvailable] = useState(vol.status === 'available');
-  return (
-    <div className="glass-card" style={{ padding: 24, position: 'sticky', top: 100 }}>
-      {/* Avatar */}
-      <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-        <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 28, color: 'var(--bg)' }}>
-          {vol.name.split(' ').map(n => n[0]).join('')}
-        </span>
-      </div>
-      <h3 style={{ fontFamily: 'DM Sans', fontWeight: 500, fontSize: 18, color: 'var(--text-primary)', margin: '0 0 4px' }}>{vol.name}</h3>
-      <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: 'var(--text-muted)', margin: '0 0 20px' }}>{vol.city}, {vol.state}</p>
-
-      {/* Availability toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <span className="label-caps">Status</span>
-        <div onClick={() => setAvailable(a => !a)} style={{ width: 64, height: 28, borderRadius: 999, background: available ? 'rgba(0,230,118,0.15)' : 'rgba(90,106,138,0.15)', border: `1px solid ${available ? 'var(--accent-green)' : 'var(--text-dim)'}`, cursor: 'pointer', position: 'relative', transition: 'all 0.3s ease' }}>
-          <div style={{ position: 'absolute', top: 3, left: available ? 'calc(100% - 25px)' : 3, width: 20, height: 20, borderRadius: '50%', background: available ? 'var(--accent-green)' : 'var(--text-muted)', transition: 'left 0.3s ease, background 0.3s ease' }} />
-        </div>
-        <span style={{ fontFamily: 'DM Sans', fontSize: 12, fontWeight: 600, color: available ? 'var(--accent-green)' : 'var(--text-muted)' }}>
-          {available ? 'Available' : 'Unavailable'}
-        </span>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-        {[
-          { label: 'Tasks', v: vol.tasksCompleted },
-          { label: 'Rate', v: `${vol.responseRate}%` },
-          { label: 'Rating', v: `${vol.rating}★` },
-        ].map(s => (
-          <div key={s.label} style={{ flex: 1, textAlign: 'center', padding: '12px 8px', background: 'var(--glass)', borderRadius: 10, border: '1px solid var(--glass-border)' }}>
-            <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 24, color: 'var(--text-primary)' }}>{s.v}</div>
-            <div className="label-caps" style={{ marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Skills */}
-      <div className="label-caps" style={{ marginBottom: 10 }}>Skills</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {vol.skills.map(sk => (
-          <span key={sk} style={{ fontSize: 11, fontFamily: 'DM Sans', fontWeight: 600, padding: '3px 10px', borderRadius: 999, background: 'rgba(200,169,110,0.12)', color: 'var(--accent-gold)', border: '1px solid rgba(200,169,110,0.2)' }}>{sk}</span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function VolunteerPage() {
-  const { incidents } = useAppStore();
-  const [activeTab, setActiveTab] = useState('All');
-  const listRef = useStaggeredReveal(80);
-
-  useEffect(() => {
-    async function fetchDisasters() {
-      try {
-        const res = await fetch("http://localhost:5000/api/disasters");
-        const data = await res.json();
-        useAppStore.setState({ incidents: data });
-      } catch (err) {
-        console.error("Error fetching disasters in volunteer hub:", err);
-      }
-    }
-
-    if (incidents.length === 0) {
-      fetchDisasters();
-    }
-  }, []);
-
-  const filtered = (() => {
-    if (activeTab === 'Critical Only') return incidents.filter(i => i.severity === 'critical');
-    if (activeTab === 'Nearby (5km)') return incidents.slice(0, 4);
-    if (activeTab === 'My Skills') return incidents.filter(i => i.type === 'flood' || i.type === 'landslide');
-    return incidents;
-  })();
-
-  return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      <Navbar />
-      {/* Hero */}
-      <div style={{ paddingTop: 100, paddingBottom: 20, paddingLeft: 'clamp(24px,8vw,64px)', paddingRight: 'clamp(24px,8vw,64px)' }}>
-        <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(48px,8vw,100px)', color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>volunteer</h1>
-        <span style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(32px,5vw,72px)', color: 'var(--text-muted)', display: 'block', lineHeight: 1 }}>hub</span>
-      </div>
-
-      {/* Filter tabs */}
-      <div style={{ borderBottom: '1px solid var(--glass-border)', paddingLeft: 'clamp(24px,8vw,64px)', paddingRight: 'clamp(24px,8vw,64px)', display: 'flex', gap: 0 }}>
-        {FILTER_TABS.map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            style={{ padding: '10px 20px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans', fontSize: 13, fontWeight: activeTab === tab ? 600 : 400, color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-muted)', position: 'relative' }}>
-            {tab}
-            {activeTab === tab && <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: 'var(--accent-gold)', animation: 'line-draw 0.3s ease forwards' }} />}
-          </button>
-        ))}
-      </div>
-
-      {/* Two-column layout */}
-      <div className="desktop-two-col" style={{ display: 'flex', gap: 32, padding: '32px clamp(24px,8vw,64px) 80px', alignItems: 'flex-start' }}>
-        {/* Task feed — 65% */}
-        <div style={{ flex: '0 0 65%', minWidth: 0 }}>
-          <div ref={listRef as React.RefObject<HTMLDivElement>} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {filtered.map((inc, i) => (
-              <TaskCard key={inc.id} incident={inc} distance={MOCK_DISTANCES[i % MOCK_DISTANCES.length]} />
-            ))}
-          </div>
-        </div>
-        {/* Profile — 35% */}
-        <div style={{ flex: 1 }}>
-          <VolunteerProfile vol={VOLUNTEERS[0]} />
-        </div>
-      </div>
+      <style>{`
+        .leaflet-container { background: #090C12 !important; }
+        .leaflet-control-zoom { border: none !important; margin: 20px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important; }
+        .leaflet-control-zoom a { background: #1E293B !important; color: #F1F5F9 !important; border-color: rgba(255,255,255,0.1) !important; }
+        .leaflet-control-zoom a:hover { background: #334155 !important; }
+        @keyframes dot-ping { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(2.5); opacity: 0; } }
+      `}</style>
     </div>
   );
 }

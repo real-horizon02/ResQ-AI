@@ -18,6 +18,11 @@ export default function AuthCallback() {
       }
       if (session.user) {
         await fetchProfile(session.user.id);
+        const { profile } = useAuthStore.getState();
+        if (profile?.role === 'volunteer' && !profile.onboarded) {
+          navigate('/volunteer-onboarding');
+          return;
+        }
       }
       const next = searchParams.get('next') || '/';
       navigate(next);

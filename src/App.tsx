@@ -23,6 +23,8 @@ import AdminPage from './pages/Admin';
 import AuthPage from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
 import ProfilePage from './pages/Profile';
+import VolunteerOnboarding from './pages/VolunteerOnboarding';
+import PendingApproval from './pages/PendingApproval';
 
 function Layout() {
   useLenis();
@@ -60,6 +62,8 @@ const router = createBrowserRouter(
         { path: 'auth', element: <AuthPage /> },
         { path: 'auth/callback', element: <AuthCallback /> },
         { path: 'profile', element: <ProfilePage /> },
+        { path: 'volunteer-onboarding', element: <VolunteerOnboarding /> },
+        { path: 'pending-approval', element: <PendingApproval /> },
         { path: '*', element: <Home /> },
       ],
     },
@@ -68,6 +72,10 @@ const router = createBrowserRouter(
     future: {
       v7_startTransition: true,
       v7_relativeSplatPath: true,
+      v7_fetcherPersist: true,
+      v7_normalizeFormMethod: true,
+      v7_partialHydration: true,
+      v7_skipActionErrorRevalidation: true,
     },
   } as any
 );

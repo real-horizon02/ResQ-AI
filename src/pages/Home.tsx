@@ -5,6 +5,7 @@ import { Navbar } from '../components/Navbar';
 import { useNumberCounter } from '../hooks/useNumberCounter';
 import { useStaggeredReveal } from '../hooks/useStaggeredReveal';
 import { useHomeStats } from '../hooks/useHomeStats';
+import { useDisasters } from '../hooks/useDisasters';
 import Radar from '../components/ui/Radar.tsx';
 
 /* ── Hero Section ───────────────────────────────── */
@@ -12,6 +13,7 @@ function HeroSection() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [revealed, setRevealed] = useState(false);
+  const { volunteers, activeAlerts, statesCovered } = useHomeStats();
 
   useEffect(() => {
     const t = setTimeout(() => setRevealed(true), 100);
@@ -96,7 +98,7 @@ function HeroSection() {
         <div className="animate-marquee" style={{ display: 'flex', gap: 80, width: 'max-content' }}>
           {[...Array(4)].map((_, i) => (
             <span key={i} style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              🟢 14 Volunteers Online &nbsp;·&nbsp; 🔴 3 Critical Incidents &nbsp;·&nbsp; ⚡ Avg Response: 4.2 min &nbsp;·&nbsp; 🇮🇳 Covering 48 Cities
+              🟢 {volunteers} Volunteers Online &nbsp;·&nbsp; 🔴 {activeAlerts} Active Alerts &nbsp;·&nbsp; ⚡ Real-time Data Sync &nbsp;·&nbsp; 🇮🇳 Covering {statesCovered} States
             </span>
           ))}
         </div>
@@ -107,18 +109,16 @@ function HeroSection() {
 
 /* ── Mission Section ────────────────────────────── */
 function MissionSection() {
-  const { activeUsers, resolved, cities, avgResponse } = useHomeStats();
-
-  const { value: users, ref: r1 } = useNumberCounter(activeUsers);
-  const { value: incidents, ref: r2 } = useNumberCounter(resolved);
-  const { value: citiesCount, ref: r3 } = useNumberCounter(cities);
-  const { value: responseTime, ref: r4 } = useNumberCounter(avgResponse);
+  const { value: v1, ref: r1 } = useNumberCounter(6);
+  const { value: v2, ref: r2 } = useNumberCounter(15); // 15 / 10 = 1.5s
+  const { value: v3, ref: r3 } = useNumberCounter(5);
+  const { value: v4, ref: r4 } = useNumberCounter(100);
 
   const stats = [
-    { ref: r1, value: users, label: 'Active Users', suffix: '+' },
-    { ref: r2, value: incidents, label: 'Resolved', suffix: '+' },
-    { ref: r3, value: citiesCount, label: 'Cities', suffix: '' },
-    { ref: r4, value: responseTime / 10, label: 'Avg Response', suffix: ' min' },
+    { ref: r1, value: v1, label: 'GDACS DATA SYNC', suffix: ' min' },
+    { ref: r2, value: v2 / 10, label: 'SOS ACTIVATION HOLD', suffix: 's' },
+    { ref: r3, value: v3, label: 'SPATIAL ROUTING RADIUS', suffix: ' km' },
+    { ref: r4, value: v4, label: 'OFFLINE QUEUING', suffix: '%' },
   ];
 
   return (
@@ -160,6 +160,29 @@ function MissionSection() {
 /* ── Platform Preview ───────────────────────────── */
 function PlatformPreview() {
   const navigate = useNavigate();
+  const { disasters } = useDisasters();
+
+  const severities = { critical: 4, high: 3, medium: 2, low: 1 };
+  const sortedDisasters = [...disasters].sort((a, b) => severities[b.severity] - severities[a.severity]);
+  const topDisaster = sortedDisasters[0];
+  const activeCount = disasters.length;
+  const isDemo = activeCount === 0;
+
+  const estimatedAffected = isDemo ? 14200 : disasters.reduce((acc, d) => {
+    if (d.severity === 'critical') return acc + 84200;
+    if (d.severity === 'high') return acc + 14500;
+    if (d.severity === 'medium') return acc + 2300;
+    return acc + 400;
+  }, 0);
+
+  const { value: affectedValue, ref: affectedRef } = useNumberCounter(estimatedAffected, 2500);
+  const formattedAffected = affectedValue >= 1000 
+    ? (affectedValue / 1000).toFixed(1) + 'k' 
+    : affectedValue.toString();
+
+  const maxSeverityNum = isDemo ? 3 : (topDisaster ? severities[topDisaster.severity] : 0);
+  const radiusKm = isDemo ? 45 : (topDisaster ? severities[topDisaster.severity] * 15 : 0);
+
   return (
     <section style={{ padding: 'clamp(60px, 8vh, 80px) clamp(24px, 6vw, 64px)', background: 'var(--bg-surface)', position: 'relative', overflow: 'hidden' }}>
       <div style={{ textAlign: 'center', marginBottom: 48 }}>
@@ -198,12 +221,14 @@ function PlatformPreview() {
           </div>
           
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'baseline', gap: 24, marginTop: 32 }}>
-            <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(56px, 8vw, 84px)', color: 'var(--text-primary)', lineHeight: 1 }}>
-              14.2k
+            <div ref={affectedRef as React.RefObject<HTMLDivElement>} style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(56px, 8vw, 84px)', color: 'var(--text-primary)', lineHeight: 1 }}>
+              {formattedAffected}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>PEOPLE AFFECTED</span>
-              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--accent-red)' }}>SEV_3 // RADIUS: 45KM</span>
+              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--accent-red)' }}>
+                SEV_{maxSeverityNum} // RADIUS: {radiusKm}KM
+              </span>
             </div>
           </div>
         </div>

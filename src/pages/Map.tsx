@@ -1,540 +1,550 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Navbar } from '../components/Navbar';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet.markercluster';
 import { useAppStore } from '../store/useAppStore';
-import { TYPE_EMOJIS, Incident } from '../data/mockData';
-import { motion } from 'framer-motion';
+import { useAuthStore } from '../store/useAuthStore';
+import { Incident } from '../data/mockData';
+import { AnimatePresence, motion } from 'framer-motion';
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 
-// ─── Severity Palette ──────────────────────────────────────────────────────────
-const SEV_COLOR: Record<string, string> = {
-  critical: '#FF2D2D', high: '#FF6B1A', medium: '#F59E0B', low: '#5A6A8A',
+// ── Severity config ───────────────────────────────────────────────────────────
+const SEV: Record<string, { color: string; bg: string; label: string }> = {
+  critical: { color: '#EF4444', bg: 'rgba(239,68,68,0.12)', label: 'CRITICAL' },
+  high:     { color: '#F97316', bg: 'rgba(249,115,22,0.12)', label: 'HIGH' },
+  medium:   { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', label: 'MEDIUM' },
+  low:      { color: '#64748B', bg: 'rgba(100,116,139,0.12)', label: 'LOW' },
 };
 
-interface RainCity {
-  name: string;
-  lat: number;
-  lng: number;
-  rainIntensity: number;
-  severity: string;
-  isRaining: boolean;
-  weatherDescription: string;
-  weatherIcon: string;
-  temp: number | null;
-  humidity: number | null;
-  windSpeed: number | null;
-  updatedAt: string;
-}
+const TYPE_LABEL: Record<string, string> = {
+  flood: 'Flood', earthquake: 'Earthquake', landslide: 'Landslide',
+  cyclone: 'Cyclone', tsunami: 'Tsunami', wildfire: 'Fire',
+  fire: 'Fire', 'building-collapse': 'Building Collapse',
+  'gas-leak': 'Gas Leak', drought: 'Drought', heatwave: 'Heatwave',
+};
 
-function makePinIcon(severity: string): L.DivIcon {
-  const c = SEV_COLOR[severity] || '#5A6A8A';
-  const pulse = severity === 'critical'
-    ? `<circle cx="16" cy="16" r="20" fill="none" stroke="${c}" stroke-width="1.5" opacity="0.6">
-         <animate attributeName="r" from="20" to="34" dur="1.8s" repeatCount="indefinite"/>
-         <animate attributeName="opacity" from="0.6" to="0" dur="1.8s" repeatCount="indefinite"/>
-       </circle>`
-    : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="44" viewBox="0 0 32 44">
-    ${pulse}
-    <path d="M16 0C7.16 0 0 7.16 0 16c0 10.56 16 28 16 28S32 26.56 32 16C32 7.16 24.84 0 16 0z" fill="${c}"/>
-    <circle cx="16" cy="16" r="7" fill="rgba(0,0,0,0.4)"/>
-  </svg>`;
-  return L.divIcon({ html: svg, className: '', iconSize: [32, 44], iconAnchor: [16, 44], popupAnchor: [0, -44] });
-}
-
-function makeRainIcon(city: RainCity): L.DivIcon {
-  const isRaining = city.isRaining;
-  const severity = city.severity;
-  
-  let color = '#8899BB'; // Default clear weather
-  let pulseHtml = '';
-  
-  if (isRaining) {
-    if (severity === 'critical') color = '#FF2D2D'; // Critical rain
-    else if (severity === 'high') color = '#FF6B1A'; // High rain
-    else if (severity === 'medium') color = '#00B0FF'; // Medium rain
-    else color = '#00E5FF'; // Low rain
-
-    pulseHtml = `
-      <div style="
-        position: absolute;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        border: 2px solid ${color};
-        animation: rain-pulse 1.8s infinite ease-out;
-        pointer-events: none;
-        top: -3px;
-        left: -3px;
-      "></div>
-    `;
+function getIncidentLabel(inc: Incident): string {
+  if (inc.type === 'rainfall') {
+    if (inc.severity === 'critical' || inc.severity === 'high') return 'Heavy Rain';
+    if (inc.severity === 'medium') return 'Moderate Rain';
+    return 'Light Rain';
   }
-
-  const iconSvg = isRaining 
-    ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="${color}" style="animation: rain-bounce 1.5s infinite ease-in-out">
-        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
-       </svg>`
-    : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"/>
-        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
-       </svg>`;
-
-  const html = `
-    <div style="position: relative; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">
-      ${pulseHtml}
-      ${iconSvg}
-    </div>
-  `;
-
-  return L.divIcon({
-    html,
-    className: '',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -10]
-  });
+  return TYPE_LABEL[inc.type] || inc.type || 'Incident';
 }
 
-// ─── Sidebar ────────────────────────────────────────────────────────────────
-type SevFilter = 'all' | 'critical' | 'high' | 'medium' | 'low';
+// ── Dot marker ────────────────────────────────────────────────────────────────
+function makeDot(severity: string): L.DivIcon {
+  const { color } = SEV[severity] || SEV.low;
+  const pulse = severity === 'critical'
+    ? `<div style="position:absolute;inset:-6px;border-radius:50%;border:1.5px solid ${color};animation:dot-ping 2s cubic-bezier(0,0,0.2,1) infinite;opacity:0.5;"></div>`
+    : severity === 'high'
+    ? `<div style="position:absolute;inset:-4px;border-radius:50%;border:1px solid ${color};animation:dot-ping 2.5s cubic-bezier(0,0,0.2,1) infinite;opacity:0.35;"></div>`
+    : '';
+  const html = `
+    <div style="position:relative;width:12px;height:12px;display:flex;align-items:center;justify-content:center;">
+      ${pulse}
+      <div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 6px ${color}88;"></div>
+    </div>`;
+  return L.divIcon({ html, className: '', iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -10] });
+}
 
-function Sidebar({
-  incidents,
-  activeId,
-  onSelect,
-}: {
-  incidents: Incident[];
-  activeId: string | null;
-  onSelect: (id: string) => void;
-}) {
-  const [filter, setFilter] = useState<SevFilter>('all');
-  const list = filter === 'all' ? incidents : incidents.filter(i => i.severity === filter);
+// ── Type to emoji map ─────────────────────────────────────────────────────────
+const TYPE_EMOJI: Record<string, string> = {
+  flood: '🌊', earthquake: '🌍', landslide: '⛰️', cyclone: '🌀', tsunami: '🌊',
+  wildfire: '🔥', fire: '🔥', rainfall: '🌧️', 'building-collapse': '🏚️',
+  'gas-leak': '⚗️', drought: '☀️', heatwave: '🌡️',
+};
+
+// ── Smart Location Geocoder Component ─────────────────────────────────────────
+const clientGeoCache: Record<string, string> = {};
+
+function LocationDisplay({ lat, lng, defaultLoc }: { lat: number; lng: number; defaultLoc: string }) {
+  const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+  const [address, setAddress] = useState(clientGeoCache[key] || defaultLoc);
+
+  useEffect(() => {
+    if (clientGeoCache[key]) return;
+    let mounted = true;
+    fetch(`http://localhost:5000/api/geocode?lat=${lat}&lng=${lng}`)
+      .then(res => res.json())
+      .then(data => {
+        if (mounted && data.address) {
+          const shortAddr = data.address.split(',').slice(0, 3).join(', ');
+          clientGeoCache[key] = shortAddr;
+          setAddress(shortAddr);
+        }
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, [lat, lng, key]);
+
+  return <span>📍 {address}</span>;
+}
+
+// ── Top bar ───────────────────────────────────────────────────────────────────
+function TopBar({ online, critical }: { online: number; critical: number }) {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const [dark, setDark] = useState(true);
+  const toggle = () => setDark(!dark);
 
   return (
-    <motion.div
-      initial={{ x: -280, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="mobile-hide"
+    <div style={{
+      height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 20px', background: '#090C12', borderBottom: '1px solid rgba(255,255,255,0.06)',
+      flexShrink: 0, zIndex: 10, position: 'relative',
+    }}>
+      {/* Title */}
+      <h1 style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: 'italic', fontSize: 22, fontWeight: 700, color: '#F1F5F9', letterSpacing: '-0.01em' }}>
+          Live Incident Map
+        </span>
+        <span style={{ fontFamily: "'DM Sans', sans-serif", fontStyle: 'normal', fontWeight: 300, fontSize: 13, color: '#475569' }}>
+          — India
+        </span>
+      </h1>
+
+      {/* Right side */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginRight: 8 }}>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#22C55E', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+            {online} Volunteers Online
+          </span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#EF4444', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', display: 'inline-block' }} />
+            {critical} Critical Incidents
+          </span>
+        </div>
+
+        {/* Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={() => navigate(user ? '/profile' : '/auth')}
+            style={{ padding: '6px 14px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', color: '#CBD5E1', borderRadius: 8, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s ease' }}
+          >
+            {user ? 'Profile →' : 'Login →'}
+          </button>
+          
+          <LanguageSwitcher />
+
+          <button
+            onClick={toggle}
+            style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 14, color: '#64748B' }}
+          >
+            {dark ? '☀️' : '🌙'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sidebar card ──────────────────────────────────────────────────────────────
+function IncidentCard({ inc, active, onClick }: { inc: Incident; active: boolean; onClick: () => void }) {
+  const s = SEV[inc.severity] || SEV.low;
+  const typeLabel = getIncidentLabel(inc);
+
+  return (
+    <div
+      onClick={onClick}
       style={{
-        width: 280, flexShrink: 0, background: '#0D1525',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        height: '100%',
+        padding: '16px 18px', cursor: 'pointer',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        background: active ? 'rgba(255,255,255,0.04)' : 'transparent',
+        transition: 'background 0.15s ease',
       }}
     >
-      {/* Header */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontFamily: 'DM Sans', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#5A6A8A' }}>INCIDENTS</span>
-        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,45,45,0.1)', border: '1px solid #FF2D2D', color: '#FF2D2D', fontWeight: 700, animation: 'pulse-dot 2s infinite' }}>● LIVE</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+        <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#F1F5F9', lineHeight: 1.2 }}>
+          {typeLabel}
+        </span>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fontWeight: 700,
+          padding: '3px 8px', borderRadius: 4, letterSpacing: '0.06em',
+          background: s.bg, color: s.color,
+          border: `1px solid ${s.color}33`,
+        }}>
+          {s.label}
+        </span>
       </div>
+      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#64748B', marginBottom: 5 }}>
+        <LocationDisplay lat={inc.lat} lng={inc.lng} defaultLoc={inc.location || inc.state || 'India'} />
+      </div>
+      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span>🧑‍🤝‍🧑</span>
+        <span>{(inc.peopleAffected ?? 0).toLocaleString()} affected</span>
+      </div>
+    </div>
+  );
+}
 
-      <div style={{ padding: '8px 12px 10px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-        {(['all', 'critical', 'high', 'medium', 'low'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)}
-            style={{ padding: '3px 10px', borderRadius: 999, border: `1px solid ${filter === f ? '#C8A96E' : 'rgba(255,255,255,0.07)'}`, background: filter === f ? 'rgba(200,169,110,0.1)' : 'transparent', color: filter === f ? '#C8A96E' : '#5A6A8A', fontFamily: 'DM Sans', fontSize: 10, fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {f}
-          </button>
-        ))}
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+type SevFilter = 'all' | 'critical' | 'high' | 'medium';
+
+function Sidebar({ incidents, activeId, onSelect }: {
+  incidents: Incident[]; activeId: string | null; onSelect: (id: string) => void;
+}) {
+  const [filter, setFilter] = useState<SevFilter>('all');
+  const displayed = useMemo(() => {
+    const order = { critical: 0, high: 1, medium: 2, low: 3 };
+    const base = filter === 'all' ? incidents : incidents.filter(i => i.severity === filter);
+    return [...base].sort((a, b) => {
+      const s = (order[a.severity as keyof typeof order] ?? 3) - (order[b.severity as keyof typeof order] ?? 3);
+      return s !== 0 ? s : (b.peopleAffected ?? 0) - (a.peopleAffected ?? 0);
+    });
+  }, [incidents, filter]);
+
+  const FILTERS: { key: SevFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'critical', label: 'Critical' },
+    { key: 'high', label: 'High' },
+    { key: 'medium', label: 'Medium' },
+  ];
+
+  return (
+    <div style={{
+      width: 300, flexShrink: 0,
+      background: '#09111E',
+      borderRight: '1px solid rgba(255,255,255,0.06)',
+      display: 'flex', flexDirection: 'column',
+      height: '100%',
+    }}>
+      {/* Header */}
+      <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 600, color: '#E2E8F0' }}>
+            Incidents
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#EF4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', padding: '3px 8px', borderRadius: 5 }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'pulse-dot 1.5s infinite' }} />
+            Live
+          </div>
+        </div>
+
+        {/* Filter pills */}
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {FILTERS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              style={{
+                padding: '5px 11px', borderRadius: 999, fontSize: 11,
+                fontFamily: "'DM Sans', sans-serif", fontWeight: 500, cursor: 'pointer',
+                border: filter === key ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                background: filter === key ? '#F1F5F9' : 'transparent',
+                color: filter === key ? '#0F172A' : '#64748B',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Incident list */}
-      <div
-        data-lenis-prevent
-        style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 7 }}
-      >
-        {list.map(inc => (
-          <div key={inc.id} onClick={() => onSelect(inc.id)}
-            style={{
-              padding: '11px 13px',
-              borderRadius: 10,
-              background: activeId === inc.id ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
-              borderStyle: 'solid',
-              borderWidth: '1px',
-              borderLeftWidth: '3px',
-              borderTopColor: activeId === inc.id ? SEV_COLOR[inc.severity] + '55' : 'rgba(255,255,255,0.05)',
-              borderRightColor: activeId === inc.id ? SEV_COLOR[inc.severity] + '55' : 'rgba(255,255,255,0.05)',
-              borderBottomColor: activeId === inc.id ? SEV_COLOR[inc.severity] + '55' : 'rgba(255,255,255,0.05)',
-              borderLeftColor: SEV_COLOR[inc.severity],
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 3 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#E8F0FE', lineHeight: 1.3, fontFamily: 'DM Sans' }}>{TYPE_EMOJIS[inc.type]} {inc.title.split('—')[0].trim()}</span>
-              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 999, background: SEV_COLOR[inc.severity] + '22', color: SEV_COLOR[inc.severity], fontWeight: 700, flexShrink: 0, marginLeft: 4 }}>{inc.severity}</span>
-            </div>
-            <p id={`sidebar-state-${inc.id}`} style={{ fontFamily: 'monospace', fontSize: 10, color: '#5A6A8A', margin: '0 0 2px' }}>{inc.state}</p>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 11, color: '#5A6A8A', margin: 0 }}>👥 {(inc.peopleAffected ?? 0).toLocaleString()} affected</p>
-          </div>
+      <div data-lenis-prevent style={{ flex: 1, overflowY: 'auto' }}>
+        {displayed.map(inc => (
+          <IncidentCard key={inc.id} inc={inc} active={activeId === inc.id} onClick={() => onSelect(inc.id)} />
         ))}
+        {displayed.length === 0 && (
+          <div style={{ padding: 32, textAlign: 'center', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#334155' }}>
+            NO ALERTS
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Incident popup panel ──────────────────────────────────────────────────────
+function IncidentPanel({ inc, onClose, onDispatch }: { inc: Incident; onClose: () => void; onDispatch: () => void }) {
+  const { isAdmin } = useAuthStore();
+  const s = SEV[inc.severity] || SEV.low;
+  const typeLabel = getIncidentLabel(inc);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        position: 'absolute', bottom: 24, left: 24,
+        width: 280, background: '#09111E',
+        border: `1px solid ${s.color}33`,
+        borderTop: `2px solid ${s.color}`,
+        borderRadius: 10,
+        boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+        zIndex: 900, overflow: 'hidden',
+      }}
+    >
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: s.color, letterSpacing: '0.08em', marginBottom: 4 }}>
+              ● {s.label} · {typeLabel.toUpperCase()}
+            </div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700, color: '#F1F5F9' }}>
+              {TYPE_EMOJI[inc.type] || '⚠️'} {typeLabel}
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#475569', width: 26, height: 26, borderRadius: 6, cursor: 'pointer', flexShrink: 0, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        </div>
+
+        <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#64748B', marginBottom: 6 }}>
+          <LocationDisplay lat={inc.lat} lng={inc.lng} defaultLoc={inc.location || inc.state || 'India'} />
+        </div>
+        <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: '#64748B', lineHeight: 1.6, margin: '0 0 12px' }}>
+          {inc.description?.substring(0, 120)}{(inc.description?.length ?? 0) > 120 ? '…' : ''}
+        </p>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 7, padding: '8px 10px', textAlign: 'center' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: '#334155', marginBottom: 3 }}>AFFECTED</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9' }}>{(inc.peopleAffected ?? 0).toLocaleString()}</div>
+          </div>
+          <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 7, padding: '8px 10px', textAlign: 'center' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 8, color: '#334155', marginBottom: 3 }}>STATE</div>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 700, color: '#F1F5F9' }}>{inc.state?.substring(0, 10) || '—'}</div>
+          </div>
+        </div>
+
+        {isAdmin && (
+          <button
+            onClick={onDispatch}
+            style={{ width: '100%', padding: '9px', border: 'none', borderRadius: 7, background: s.color, color: '#fff', fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', letterSpacing: '0.03em' }}
+          >
+            Dispatch Volunteers →
+          </button>
+        )}
       </div>
     </motion.div>
   );
 }
 
-// ─── Map Page ────────────────────────────────────────────────────────────────
+// ── Map Page ──────────────────────────────────────────────────────────────────
 export default function MapPage() {
   const { incidents, volunteers } = useAppStore();
+  const { isAdmin } = useAuthStore();
   const navigate = useNavigate();
-  
+
   const mapDivRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
-  const rainMarkersRef = useRef<L.Marker[]>([]);
-  const radarLayerRef = useRef<L.TileLayer | null>(null);
-  const highlightCircleRef = useRef<L.Circle | null>(null);
-  
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+  const highlightRef = useRef<L.Circle | null>(null);
+
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [rainCities, setRainCities] = useState<RainCity[]>([]);
-  const [showRainAlerts, setShowRainAlerts] = useState<boolean>(true);
-  const [showRainRadar, setShowRainRadar] = useState<boolean>(false);
-
-  // Fetch Disasters
-  useEffect(() => {
-    async function fetchDisasters() {
-      try {
-        const res = await fetch("http://localhost:5000/api/disasters");
-        const data = await res.json();
-        useAppStore.setState({ incidents: data });
-      } catch (err) {
-        console.error("Error fetching disasters:", err);
-      }
-    }
-
-    fetchDisasters(); // initial load
-    const interval = setInterval(fetchDisasters, 30000); // 30 sec refresh
-    return () => clearInterval(interval);
-  }, []);
-
-  // Fetch Rain Alerts
-  useEffect(() => {
-    async function fetchRainAlerts() {
-      try {
-        const res = await fetch("http://localhost:5000/api/rain-alerts");
-        const data = await res.json();
-        if (data.success && data.cities) {
-          setRainCities(data.cities);
-        }
-      } catch (err) {
-        console.error("Error fetching rain alerts:", err);
-      }
-    }
-
-    fetchRainAlerts();
-    const interval = setInterval(fetchRainAlerts, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
   const online = volunteers.filter(v => v.status === 'available').length;
-  const critical = incidents.filter(i => i.severity === 'critical' && i.status !== 'resolved').length;
+  const criticalCount = useMemo(() => incidents.filter(i => i.severity === 'critical' && i.status !== 'resolved').length, [incidents]);
+  const activeInc = incidents.find(i => i.id === activeId) || null;
 
-  // ── Initialize Leaflet map imperatively ─────────────────────────────────────
+  // Filter out noisy zero-affected fire alerts and low rainfall
+  const displayed = useMemo(() => incidents.filter(inc => {
+    // 1. Strictly filter out non-heavy rainfall before any other checks
+    if (inc.type === 'rainfall') {
+      return inc.severity === 'critical' || inc.severity === 'high';
+    }
+
+    // 2. Default logic for other incidents
+    if (inc.severity === 'critical' || inc.severity === 'high') return true;
+    if ((inc.peopleAffected ?? 0) > 0) return true;
+    if (inc.type !== 'fire') return true;
+    return false;
+  }), [incidents]);
+
+  // Fetch disasters
   useEffect(() => {
-    if (!mapDivRef.current || leafletMapRef.current) return;
-
-    const southWest = L.latLng(8.0, 68.0);
-    const northEast = L.latLng(37.6, 97.5);
-    const bounds = L.latLngBounds(southWest, northEast);
-
-    // Init map
-    const map = L.map(mapDivRef.current, {
-      center: [22.5, 83],
-      zoom: 5,
-      zoomControl: false,
-      attributionControl: false,
-      maxBounds: bounds,
-      maxBoundsViscosity: 1.0,
-      minZoom: 4,
-    });
-
-    // Dark CartoDB tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(map);
-
-    // Zoom control bottom-right
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    // Attribution
-    L.control.attribution({ position: 'bottomleft', prefix: '© OSM contributors · © CARTO' }).addTo(map);
-
-    leafletMapRef.current = map;
-
-    // Clean up on unmount
-    return () => {
-      map.remove();
-      leafletMapRef.current = null;
-      highlightCircleRef.current = null;
+    const load = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/disasters');
+        const data = await res.json();
+        useAppStore.setState({ incidents: data });
+        setLastUpdated(new Date());
+      } catch {}
     };
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
   }, []);
 
-  // ── Add/update markers whenever incidents change ─────────────────────────────
+  // Init map
+  useEffect(() => {
+    if (!mapDivRef.current || leafletMapRef.current) return;
+    const map = L.map(mapDivRef.current, {
+      center: [22.5, 83], zoom: 5,
+      zoomControl: false, attributionControl: false,
+      minZoom: 4, maxZoom: 18,
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd', maxZoom: 19,
+    }).addTo(map);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+    L.control.attribution({ position: 'bottomleft', prefix: '© OSM contributors · © CARTO' }).addTo(map);
+    leafletMapRef.current = map;
+    return () => { map.remove(); leafletMapRef.current = null; };
+  }, []);
+
+  // Cluster markers
   useEffect(() => {
     const map = leafletMapRef.current;
     if (!map) return;
+    if (clusterRef.current) map.removeLayer(clusterRef.current);
 
-    // Clear old markers
-    markersRef.current.forEach(m => m.remove());
-    markersRef.current = [];
+    const group = (L as unknown as { markerClusterGroup: (opts: object) => L.MarkerClusterGroup }).markerClusterGroup({
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      iconCreateFunction: (c: L.MarkerCluster) => {
+        const markers = c.getAllChildMarkers();
+        let worst = 'low';
+        markers.forEach(m => {
+          const sv = (m.options as unknown as { severity: string }).severity;
+          if (sv === 'critical') worst = 'critical';
+          else if (sv === 'high' && worst !== 'critical') worst = 'high';
+          else if (sv === 'medium' && worst === 'low') worst = 'medium';
+        });
+        const col = SEV[worst]?.color || '#64748B';
+        const n = c.getChildCount();
+        return L.divIcon({
+          html: `<div style="width:30px;height:30px;border-radius:50%;background:${col}1A;border:1.5px solid ${col}55;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;color:${col}">${n}</div>`,
+          className: '', iconSize: [30, 30], iconAnchor: [15, 15],
+        });
+      },
+    });
 
-    incidents.forEach(inc => {
-      const marker = L.marker([inc.lat, inc.lng], { icon: makePinIcon(inc.severity) })
-        .addTo(map);
+    displayed.forEach(inc => {
+      const marker = L.marker([inc.lat, inc.lng], { icon: makeDot(inc.severity) });
+      (marker.options as unknown as { severity: string }).severity = inc.severity;
 
-      // Popup content
+      const s = SEV[inc.severity] || SEV.low;
+      const typeLabel = getIncidentLabel(inc);
       const popupEl = document.createElement('div');
-      popupEl.style.cssText = 'background:#0D1525;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;min-width:220px;font-family:DM Sans,sans-serif';
+      popupEl.style.cssText = `background:#09111E;border:1px solid rgba(255,255,255,0.08);border-top:2px solid ${s.color};border-radius:10px;padding:12px 14px;min-width:200px;font-family:'DM Sans',sans-serif`;
       popupEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px">
-          <span style="font-size:13px;font-weight:600;color:#fff;line-height:1.3">${TYPE_EMOJIS[inc.type] || ''} ${inc.title}</span>
-          <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:${SEV_COLOR[inc.severity]}22;border:1px solid ${SEV_COLOR[inc.severity]};color:${SEV_COLOR[inc.severity]};font-weight:700;white-space:nowrap;flex-shrink:0">${inc.severity}</span>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
+          <span style="font-size:15px;font-weight:700;color:#F1F5F9">${TYPE_EMOJI[inc.type] || '⚠️'} ${typeLabel}</span>
+          <span style="font-size:9px;padding:2px 7px;border-radius:4px;background:${s.bg};color:${s.color};font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">${s.label}</span>
         </div>
-        <p id="popup-loc-${inc.id}" style="font-family:monospace;font-size:11px;color:#8899BB;margin:0 0 6px">📍 ${inc.location}</p>
-        <p style="font-size:12px;color:#8899BB;line-height:1.5;margin:0 0 12px">${inc.description}</p>
+        <p id="popup-loc-${inc.id}" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#475569;margin:0 0 5px">📍 ${inc.state || 'India'}</p>
+        <p style="font-size:11px;color:#64748B;line-height:1.5;margin:0 0 10px">${inc.description?.substring(0, 80) || ''}${(inc.description?.length ?? 0) > 80 ? '…' : ''}</p>
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:#FF6B1A">👥 ${(inc.peopleAffected ?? 0).toLocaleString()} affected</span>
-          <button id="dispatch-${inc.id}" style="padding:6px 14px;background:#00D4FF;color:#06090F;border:none;border-radius:8px;font-family:DM Sans,sans-serif;font-weight:700;font-size:12px;cursor:pointer">Dispatch →</button>
-        </div>
-      `;
-
-      const popup = L.popup({ closeButton: false, className: 'resq-popup', maxWidth: 280 }).setContent(popupEl);
-
-      // Dispatch button inside popup
+          <span style="font-size:11px;color:#94A3B8">🧑‍🤝‍🧑 ${(inc.peopleAffected ?? 0).toLocaleString()} affected</span>
+          ${isAdmin ? `<button id="dispatch-${inc.id}" style="padding:5px 12px;background:${s.color};color:#fff;border:none;border-radius:6px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:11px;cursor:pointer">Dispatch →</button>` : ''}
+        </div>`;
+      const popup = L.popup({ closeButton: false, className: 'resq-popup', maxWidth: 260 }).setContent(popupEl);
       popup.on('add', () => {
         const btn = document.getElementById(`dispatch-${inc.id}`);
         if (btn) btn.onclick = () => navigate('/volunteer');
-
-        // Fetch detailed address on-demand from our backend geocoder
         const locEl = document.getElementById(`popup-loc-${inc.id}`);
         if (locEl) {
-          locEl.textContent = '📍 Fetching address...';
           fetch(`http://localhost:5000/api/geocode?lat=${inc.lat}&lng=${inc.lng}`)
             .then(res => res.json())
-            .then(data => {
-              if (data && data.address) {
-                locEl.textContent = `📍 ${data.address}`;
-
-                // Update sidebar location text with a shorter version
-                const sidebarStateEl = document.getElementById(`sidebar-state-${inc.id}`);
-                if (sidebarStateEl) {
-                  const shortLoc = data.address.split(',').slice(0, 3).join(', ').trim();
-                  sidebarStateEl.textContent = shortLoc;
-                }
-              } else {
-                locEl.textContent = '📍 Address unavailable';
-              }
-            })
-            .catch(() => {
-              locEl.textContent = '📍 Address unavailable';
-            });
+            .then(data => { if (data.address) locEl.textContent = '📍 ' + data.address.split(',').slice(0, 3).join(', '); })
+            .catch(() => {});
         }
       });
-
       marker.bindPopup(popup);
       marker.on('click', () => setActiveId(inc.id));
-
-      markersRef.current.push(marker);
+      group.addLayer(marker);
     });
-  }, [incidents, navigate]);
 
-  // ── Add/update rain markers dynamically ──────────────────────────────────────
+    map.addLayer(group);
+    clusterRef.current = group;
+  }, [displayed, navigate]);
+
+  // Pan to active
   useEffect(() => {
     const map = leafletMapRef.current;
     if (!map) return;
-
-    // Clear old rain markers
-    rainMarkersRef.current.forEach(m => m.remove());
-    rainMarkersRef.current = [];
-
-    if (!showRainAlerts) return;
-
-    rainCities.forEach(city => {
-      const marker = L.marker([city.lat, city.lng], { icon: makeRainIcon(city) })
-        .addTo(map);
-
-      // Weather Popup content
-      const popupEl = document.createElement('div');
-      popupEl.style.cssText = 'background:#0D1525;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;min-width:240px;font-family:DM Sans,sans-serif';
-      
-      const rainStatus = city.isRaining 
-        ? `<span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(0,176,255,0.15);border:1px solid #00B0FF;color:#00B0FF;font-weight:700;white-space:nowrap">🌧️ Raining (${city.rainIntensity} mm/h)</span>`
-        : `<span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(76,175,80,0.15);border:1px solid #4CAF50;color:#4CAF50;font-weight:700;white-space:nowrap">☀️ Clear</span>`;
-
-      popupEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
-          <span style="font-size:14px;font-weight:700;color:#fff">${city.name}</span>
-          ${rainStatus}
-        </div>
-        <p style="font-size:12px;color:#8899BB;text-transform:capitalize;margin:0 0 10px">Condition: ${city.weatherDescription}</p>
-        
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:#fff;background:rgba(255,255,255,0.03);padding:8px;border-radius:8px;margin-bottom:10px">
-          <div>🌡️ Temp: <span style="font-weight:600;color:#00E676">${city.temp !== null ? `${city.temp}°C` : 'N/A'}</span></div>
-          <div>💧 Humidity: <span style="font-weight:600;color:#00E5FF">${city.humidity !== null ? `${city.humidity}%` : 'N/A'}</span></div>
-          <div style="grid-column:span 2">💨 Wind Speed: <span style="font-weight:600;color:#FFB300">${city.windSpeed !== null ? `${city.windSpeed} m/s` : 'N/A'}</span></div>
-        </div>
-        
-        <div style="font-size:9px;color:#5A6A8A;text-align:right">Updated: ${new Date(city.updatedAt).toLocaleTimeString()}</div>
-      `;
-
-      const popup = L.popup({ closeButton: false, className: 'resq-popup', maxWidth: 280 }).setContent(popupEl);
-      marker.bindPopup(popup);
-
-      rainMarkersRef.current.push(marker);
-    });
-  }, [rainCities, showRainAlerts]);
-
-  // ── Live RainViewer radar tile overlay ──────────────────────────────────────
-  useEffect(() => {
-    const map = leafletMapRef.current;
-    if (!map) return;
-
-    if (showRainRadar) {
-      let layer: L.TileLayer | null = null;
-      
-      const loadRadar = async () => {
-        try {
-          const res = await fetch("https://api.rainviewer.com/public/weather-maps.json");
-          const data = await res.json();
-          const latest = data.radar.past[data.radar.past.length - 1];
-          const url = `https://tilecache.rainviewer.com/v2/radar/${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
-
-          if (radarLayerRef.current) {
-            map.removeLayer(radarLayerRef.current);
-          }
-
-          layer = L.tileLayer(url, {
-            opacity: 0.65,
-            zIndex: 400
-          });
-          layer.addTo(map);
-          radarLayerRef.current = layer;
-        } catch (err) {
-          console.error("Failed to load RainViewer radar layer:", err);
-        }
-      };
-
-      loadRadar();
-      const interval = setInterval(loadRadar, 300000); // 5 mins refresh
-
-      return () => {
-        clearInterval(interval);
-        if (radarLayerRef.current) {
-          map.removeLayer(radarLayerRef.current);
-          radarLayerRef.current = null;
-        }
-      };
-    } else {
-      if (radarLayerRef.current) {
-        map.removeLayer(radarLayerRef.current);
-        radarLayerRef.current = null;
-      }
-    }
-  }, [showRainRadar]);
-
-  // ── Pan map to active incident and highlight it ──────────────────────────────
-  useEffect(() => {
-    const map = leafletMapRef.current;
-    if (!map) return;
-
-    if (highlightCircleRef.current) {
-      highlightCircleRef.current.remove();
-      highlightCircleRef.current = null;
-    }
-
+    if (highlightRef.current) { highlightRef.current.remove(); highlightRef.current = null; }
     if (!activeId) return;
-
     const inc = incidents.find(i => i.id === activeId);
-    if (inc) {
-      const c = SEV_COLOR[inc.severity] || '#5A6A8A';
-      const circle = L.circle([inc.lat, inc.lng], {
-        color: c,
-        fillColor: c,
-        fillOpacity: 0.15,
-        radius: 15000,
-        weight: 2,
-        dashArray: '5, 5'
-      }).addTo(map);
-
-      highlightCircleRef.current = circle;
-      map.flyTo([inc.lat, inc.lng], 9, { duration: 1.2 });
-      
-      const marker = markersRef.current.find(m => {
-        const pos = m.getLatLng();
-        return Math.abs(pos.lat - inc.lat) < 0.001 && Math.abs(pos.lng - inc.lng) < 0.001;
-      });
-      marker?.openPopup();
-    }
+    if (!inc) return;
+    const col = SEV[inc.severity]?.color || '#64748B';
+    highlightRef.current = L.circle([inc.lat, inc.lng], {
+      color: col, fillColor: col, fillOpacity: 0.08,
+      radius: 20000, weight: 1, dashArray: '6,4',
+    }).addTo(map);
+    map.flyTo([inc.lat, inc.lng], 9, { duration: 1.0 });
   }, [activeId, incidents]);
 
-  const handleFlyToCity = (city: RainCity) => {
-    const map = leafletMapRef.current;
-    if (!map) return;
-    map.flyTo([city.lat, city.lng], 8, { duration: 1.2 });
-    
-    const marker = rainMarkersRef.current.find(m => {
-      const pos = m.getLatLng();
-      return Math.abs(pos.lat - city.lat) < 0.001 && Math.abs(pos.lng - city.lng) < 0.001;
-    });
-    if (marker) {
-      setTimeout(() => marker.openPopup(), 1200);
-    }
-  };
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#06090F', display: 'flex', flexDirection: 'column' }}>
-      <Navbar />
-
+    <div style={{ position: 'fixed', inset: 0, background: '#09111E', display: 'flex', flexDirection: 'column' }}>
       <style>{`
-        .rain-list-container::-webkit-scrollbar {
-          width: 4px;
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        @keyframes dot-ping {
+          75%, 100% { transform: scale(2); opacity: 0; }
         }
-        .rain-list-container::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .rain-list-container::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.15);
-          border-radius: 2px;
-        }
-        @keyframes rain-pulse {
-          0% { transform: scale(0.5); opacity: 0.8; }
-          100% { transform: scale(2); opacity: 0; }
-        }
-        @keyframes rain-bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-4px); }
-        }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: transparent !important; box-shadow: none !important; }
+        .leaflet-popup-content { margin: 0 !important; }
+        .leaflet-control-zoom a { background: #09111E !important; border-color: rgba(255,255,255,0.1) !important; color: #64748B !important; font-size: 14px !important; width: 28px !important; height: 28px !important; line-height: 28px !important; }
+        .leaflet-control-zoom a:hover { background: #0F172A !important; color: #94A3B8 !important; }
+        .leaflet-control-zoom { border: 1px solid rgba(255,255,255,0.08) !important; border-radius: 8px !important; overflow: hidden; }
+        .leaflet-control-attribution { background: rgba(9,12,18,0.8) !important; color: #334155 !important; font-size: 9px !important; padding: 2px 6px !important; font-family: 'JetBrains Mono', monospace !important; }
+        .leaflet-control-attribution a { color: #475569 !important; }
+        .marker-cluster { background: transparent !important; }
+        .marker-cluster div { background: transparent !important; border: none !important; box-shadow: none !important; }
+        [data-lenis-prevent]::-webkit-scrollbar { width: 3px; }
+        [data-lenis-prevent]::-webkit-scrollbar-track { background: transparent; }
+        [data-lenis-prevent]::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 2px; }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.3} }
       `}</style>
 
-      {/* Sub-header */}
-      <div style={{ paddingTop: 70, paddingBottom: 8, paddingLeft: 24, paddingRight: 24, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#06090F' }}>
-        <div>
-          <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(22px, 3.5vw, 36px)', color: '#E8F0FE', margin: 0, lineHeight: 1 }}>
-            Live Incident Map
-            <span style={{ fontFamily: 'DM Sans', fontStyle: 'normal', fontWeight: 300, fontSize: 13, color: '#5A6A8A', marginLeft: 12 }}>— India</span>
-          </h1>
-        </div>
-        <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#00E676' }}>🟢 {online} volunteers online</span>
-          <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#FF2D2D' }}>🔴 {critical} critical</span>
-        </div>
-      </div>
+      {/* Top bar */}
+      <TopBar online={online} critical={criticalCount} />
 
-      {/* Content row */}
+      {/* Body */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <Sidebar incidents={incidents} activeId={activeId} onSelect={setActiveId} />
+        {/* Sidebar */}
+        <Sidebar incidents={displayed} activeId={activeId} onSelect={setActiveId} />
 
-        {/* Leaflet container wrapper to absolute position overlay panels */}
-        <div style={{ flex: 1, position: 'relative', minWidth: 0, minHeight: 0 }}>
-          <div
-            ref={mapDivRef}
-            data-cursor="map"
-            style={{ width: '100%', height: '100%' }}
-          />
+        {/* Map */}
+        <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+          <div ref={mapDivRef} style={{ width: '100%', height: '100%' }} />
+
+          {/* Last synced */}
+          <div style={{ position: 'absolute', bottom: 6, right: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: '#334155', background: 'rgba(9,12,18,0.75)', padding: '3px 7px', borderRadius: 4, zIndex: 500 }}>
+            ● {lastUpdated.toLocaleTimeString()}
+          </div>
+
+          {/* Incident panel */}
+          <AnimatePresence>
+            {activeInc && (
+              <IncidentPanel
+                key={activeInc.id}
+                inc={activeInc}
+                onClose={() => setActiveId(null)}
+                onDispatch={() => navigate('/volunteer')}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Floating SOS Button */}
+          <button
+            onClick={() => navigate('/sos')}
+            style={{
+              position: 'absolute', bottom: 32, right: 32, zIndex: 1000,
+              width: 64, height: 64, borderRadius: '50%',
+              background: '#FF2D2D', border: '2px solid rgba(255,255,255,0.15)',
+              color: '#fff', fontSize: 24, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 32px rgba(255,45,45,0.5)',
+            }}
+          >
+            <div style={{ position: 'absolute', inset: -4, borderRadius: '50%', border: '1px solid #FF2D2D', animation: 'dot-ping 2s infinite' }} />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
   );
 }
-

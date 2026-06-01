@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '../components/Navbar';
 import { useAuthStore } from '../store/useAuthStore';
 import { Logo } from '../components/ui/Logo';
+import { RoleSelection, Role } from '../components/RoleSelection';
 
 type Mode = 'login' | 'signup';
 
@@ -52,18 +53,25 @@ function OAuthButton({ provider, onClick, loading }: { provider: typeof OAUTH_PR
 
 function AuthForm({ mode, onSwitch, redirectPath }: { mode: Mode; onSwitch: () => void; redirectPath: string }) {
   const navigate = useNavigate();
-  const { signInWithEmail, signUp, signInWithOAuth, isLoggedIn } = useAuthStore();
+  const { signInWithEmail, signUp, signInWithOAuth, isLoggedIn, profile } = useAuthStore();
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'citizen' | 'volunteer'>('citizen');
+  const [role, setRole] = useState<string>('citizen');
+  const [signupStep, setSignupStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isLoggedIn) navigate(redirectPath || '/');
-  }, [isLoggedIn]);
+    if (isLoggedIn && profile) {
+      if (profile.role === 'volunteer' && !profile.onboarded) {
+        navigate('/volunteer-onboarding');
+      } else {
+        navigate(redirectPath || '/');
+      }
+    }
+  }, [isLoggedIn, profile, navigate, redirectPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +83,7 @@ function AuthForm({ mode, onSwitch, redirectPath }: { mode: Mode; onSwitch: () =
       } else {
         await signUp(email, pass, name, role);
       }
-      navigate(redirectPath || '/');
+      // Navigation is handled by the useEffect above
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please try again.');
     } finally {
@@ -87,6 +95,9 @@ function AuthForm({ mode, onSwitch, redirectPath }: { mode: Mode; onSwitch: () =
     setOauthLoading(provider);
     setError('');
     try {
+      if (mode === 'signup') {
+        localStorage.setItem('pending_signup_role', role);
+      }
       await signInWithOAuth(provider);
       // OAuth will redirect the page — no further action needed
     } catch (err: any) {
@@ -100,14 +111,9 @@ function AuthForm({ mode, onSwitch, redirectPath }: { mode: Mode; onSwitch: () =
     }
   };
 
-  const ROLES = [
-    { id: 'citizen', emoji: '👤', desc: 'Report incidents in my area' },
-    { id: 'volunteer', emoji: '🦺', desc: 'Respond to emergencies' },
-  ];
-
   return (
     <motion.div
-      key={mode}
+      key={`${mode}-${signupStep}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
@@ -115,87 +121,96 @@ function AuthForm({ mode, onSwitch, redirectPath }: { mode: Mode; onSwitch: () =
       style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
     >
       {/* Header */}
-      <div>
-        <span className="label-caps-gold" style={{ display: 'block', marginBottom: 12 }}>
-          [ {mode === 'login' ? 'SECURE LOGIN' : 'CREATE ACCOUNT'} ]
-        </span>
-        <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 48, color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
-          {mode === 'login' ? 'Welcome back' : 'Join ResQ AI'}
-        </h2>
-        <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: 'var(--text-muted)', margin: '12px 0 0' }}>
-          {mode === 'login' ? "Sign in to access your emergency dashboard." : "Become part of India's emergency response network."}
-        </p>
-      </div>
-
-      {/* OAuth Buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {OAUTH_PROVIDERS.map(p => (
-          <OAuthButton
-            key={p.id}
-            provider={p}
-            onClick={() => handleOAuth(p.id)}
-            loading={oauthLoading === p.id}
-          />
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-        <span style={{ fontFamily: 'DM Sans', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>OR WITH EMAIL</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-      </div>
-
-      {/* Email form */}
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {mode === 'signup' && (
-          <input className="input-underline" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} required />
-        )}
-        <input className="input-underline" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} type="email" required />
-        <input className="input-underline" placeholder="Password" value={pass} onChange={e => setPass(e.target.value)} type="password" required minLength={6} />
-
-        {mode === 'signup' && (
-          <div>
-            <span className="label-caps" style={{ display: 'block', marginBottom: 12 }}>I am a —</span>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {ROLES.map(r => (
-                <button type="button" key={r.id} onClick={() => setRole(r.id as any)}
-                  style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: `1px solid ${role === r.id ? 'var(--accent-gold)' : 'var(--glass-border)'}`, background: role === r.id ? 'rgba(200,169,110,0.08)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s ease', textAlign: 'left' }}>
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>{r.emoji}</div>
-                  <div style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 12, color: role === r.id ? 'var(--accent-gold)' : 'var(--text-muted)', textTransform: 'capitalize' }}>{r.id}</div>
-                  <div style={{ fontFamily: 'DM Sans', fontSize: 10, color: 'var(--text-dim)' }}>{r.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div style={{ padding: '10px 14px', background: 'rgba(255,45,45,0.08)', border: '1px solid rgba(255,45,45,0.2)', borderRadius: 10 }}>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 13, color: 'var(--accent-red)', margin: 0 }}>⚠ {error}</p>
-          </div>
-        )}
-
-        <button type="submit" className="btn-sos" style={{ marginTop: 4, fontSize: 15, opacity: loading ? 0.8 : 1 }} disabled={loading}>
-          {loading ? (
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <svg width="16" height="16" viewBox="0 0 18 18" fill="none" style={{ animation: 'radar-sweep 0.8s linear infinite' }}>
-                <circle cx="9" cy="9" r="7" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
-                <path d="M9 2A7 7 0 0 1 16 9" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              {mode === 'login' ? 'Signing in...' : 'Creating account...'}
-            </span>
-          ) : mode === 'login' ? 'Sign In →' : 'Create Account →'}
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-          <button type="button" onClick={onSwitch} style={{ fontFamily: 'DM Sans', fontSize: 13, color: 'var(--accent-cyan)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            {mode === 'login' ? 'Create an account →' : '← Sign in instead'}
-          </button>
-          <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+      {!(mode === 'signup' && signupStep === 1) && (
+        <div>
+          <span className="label-caps-gold" style={{ display: 'block', marginBottom: 12 }}>
+            [ {mode === 'login' ? 'SECURE LOGIN' : 'CREATE ACCOUNT'} ]
+          </span>
+          <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 48, color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
+            {mode === 'login' ? 'Welcome back' : 'Join ResQ AI'}
+          </h2>
+          <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: 'var(--text-muted)', margin: '12px 0 0' }}>
+            {mode === 'login' ? "Sign in to access your emergency dashboard." : "Become part of India's emergency response network."}
+          </p>
         </div>
-      </form>
+      )}
+
+      {mode === 'signup' && signupStep === 1 ? (
+        <RoleSelection
+          onContinue={(selectedRole) => {
+            if (selectedRole === 'volunteer') {
+              localStorage.setItem('pending_signup_role', 'volunteer');
+              navigate('/volunteer-onboarding');
+            } else {
+              setRole(selectedRole);
+              setSignupStep(2);
+            }
+          }}
+          onSwitch={onSwitch}
+        />
+      ) : (
+        <>
+          {/* OAuth Buttons */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {OAUTH_PROVIDERS.map(p => (
+              <OAuthButton
+                key={p.id}
+                provider={p}
+                onClick={() => handleOAuth(p.id)}
+                loading={oauthLoading === p.id}
+              />
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+            <span style={{ fontFamily: 'DM Sans', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>OR WITH EMAIL</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+          </div>
+
+          {/* Email form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {mode === 'signup' && (
+              <input className="input-underline" placeholder="Full name" value={name} onChange={e => setName(e.target.value)} required />
+            )}
+            <input className="input-underline" placeholder="Email address" value={email} onChange={e => setEmail(e.target.value)} type="email" required />
+            <input className="input-underline" placeholder="Password" value={pass} onChange={e => setPass(e.target.value)} type="password" required minLength={6} />
+
+            {error && (
+              <div style={{ padding: '10px 14px', background: 'rgba(255,45,45,0.08)', border: '1px solid rgba(255,45,45,0.2)', borderRadius: 10 }}>
+                <p style={{ fontFamily: 'DM Sans', fontSize: 13, color: 'var(--accent-red)', margin: 0 }}>⚠ {error}</p>
+              </div>
+            )}
+
+            <button type="submit" className="btn-sos" style={{ marginTop: 4, fontSize: 15, opacity: loading ? 0.8 : 1 }} disabled={loading}>
+              {loading ? (
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                  <svg width="16" height="16" viewBox="0 0 18 18" fill="none" style={{ animation: 'radar-sweep 0.8s linear infinite' }}>
+                    <circle cx="9" cy="9" r="7" stroke="rgba(255,255,255,0.4)" strokeWidth="2" />
+                    <path d="M9 2A7 7 0 0 1 16 9" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                  {mode === 'login' ? 'Signing in...' : 'Creating account...'}
+                </span>
+              ) : mode === 'login' ? 'Sign In →' : 'Create Account →'}
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+              <button type="button" onClick={() => {
+                if (mode === 'signup' && signupStep === 2) {
+                  setSignupStep(1);
+                } else {
+                  onSwitch();
+                }
+              }} style={{ fontFamily: 'DM Sans', fontSize: 13, color: 'var(--accent-cyan)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                {mode === 'login' ? 'Create an account →' : (signupStep === 2 ? '← Back to roles' : '← Sign in instead')}
+              </button>
+              <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+            </div>
+          </form>
+        </>
+      )}
     </motion.div>
   );
 }
@@ -238,10 +253,12 @@ export default function AuthPage() {
       </div>
 
       {/* Right — Form */}
-      <div style={{ flex: 1, marginLeft: 'min(45vw, 45vw)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(100px,15vh,160px) clamp(32px,8vw,96px) 48px' }}>
-        <div style={{ width: '100%', maxWidth: 460 }}>
+      <div style={{ flex: 1, marginLeft: 'min(45vw, 45vw)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(60px,15vh,160px) clamp(24px,5vw,96px) 48px' }}>
+        <div style={{ width: '100%', maxWidth: mode === 'signup' ? 800 : 460 }}>
           <AnimatePresence mode="wait">
-            <AuthForm key={mode} mode={mode} onSwitch={() => setMode(m => m === 'login' ? 'signup' : 'login')} redirectPath={redirectPath} />
+            <AuthForm key={mode} mode={mode} onSwitch={() => {
+              setMode(m => m === 'login' ? 'signup' : 'login')
+            }} redirectPath={redirectPath} />
           </AnimatePresence>
         </div>
       </div>

@@ -59,9 +59,9 @@ export function Navbar() {
   }, [sosPopup]);
 
   const handleSignOut = async () => {
-    await signOut();
     setDropdownOpen(false);
     navigate('/');
+    await signOut();
   };
 
   // ── Navbar SOS hold handlers ───────────────────────────────────────
