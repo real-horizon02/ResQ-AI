@@ -19,6 +19,7 @@ export interface UserProfile {
   is_volunteer?: boolean;
   onboarded?: boolean;
   location?: any;
+  gender?: 'male' | 'female' | 'other' | null;
 }
 
 interface AuthStore {

@@ -12,6 +12,7 @@ dotenv.config({ path: join(__dirname, '../.env') });
 import sosRoutes from './Routes/sos_routes.js';
 import disasterRoutes from './Routes/disasterRoutes.js';
 import rainfallRoutes from './Routes/RainfallRoutes.js';
+import rescueRoutes from './Routes/rescueRoutes.js';
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -43,6 +44,7 @@ app.get('/', (req, res) => {
 app.use('/api', sosRoutes);
 app.use('/api', disasterRoutes);
 app.use('/api', rainfallRoutes);
+app.use('/api', rescueRoutes);
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });

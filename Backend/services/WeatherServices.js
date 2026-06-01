@@ -64,11 +64,11 @@ export const getHeatwaveData = async () => {
   try {
     const lats = cities.map(c => c.lat).join(",");
     const lngs = cities.map(c => c.lng).join(",");
-    
+
     // Batch query all 24 locations in a single high-performance request!
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m`;
 
-    const res = await axios.get(url);
+    const res = await axios.get(url, { timeout: 8000 });
     const dataArray = Array.isArray(res.data) ? res.data : [res.data];
 
     const results = dataArray.map((locWeather, index) => {

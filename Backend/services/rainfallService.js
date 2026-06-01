@@ -1,6 +1,8 @@
 import axios from "axios";
 import { cities } from "./WeatherServices.js";
 import { isLocationInIndia } from "../utils/geoUtils.js";
+import { fetchWithRetry } from "../utils/apiRetry.js";
+import { mockDisasterData } from "../data/mockDisasters.js";
 
 // Cache in-memory to prevent rate-limiting and ensure fast response
 let cachedRainData = null;
@@ -17,8 +19,8 @@ export const getRainfallData = async () => {
   try {
     const apiKey = process.env.OPEN_WEATHER_API_KEY || process.env.OPENWEATHER_API_KEY;
     if (!apiKey) {
-      console.warn("[RAINFALL] Warning: No OpenWeather API Key found in env variables!");
-      return [];
+      console.warn("[RAINFALL] No OpenWeather API Key found. Using mock rainfall data.");
+      return mockDisasterData.rainfall;
     }
 
     console.log("[RAINFALL] Fetching real-time rainfall data for India...");
@@ -27,7 +29,7 @@ export const getRainfallData = async () => {
     const promises = cities.map(async (city) => {
       try {
         const url = `https://api.openweathermap.org/data/2.5/weather?lat=${city.lat}&lon=${city.lng}&units=metric&appid=${apiKey}`;
-        const response = await axios.get(url, { timeout: 4000 });
+        const response = await axios.get(url, { timeout: 6000 });
         const data = response.data;
         
         let rainIntensity = 0;
@@ -86,11 +88,11 @@ export const getRainfallData = async () => {
     lastFetchTime = now;
 
     console.log(`[RAINFALL] Successfully fetched rainfall data. Found ${filtered.length} active weather locations.`);
-    return filtered;
+    return filtered.length > 0 ? filtered : mockDisasterData.rainfall;
 
   } catch (error) {
-    console.error("[RAINFALL] Error fetching rainfall data:", error.message);
-    return cachedRainData || [];
+    console.warn(`[RAINFALL] API failed (${error.message}). Using cached or mock rainfall data.`);
+    return cachedRainData || mockDisasterData.rainfall;
   }
 };
 

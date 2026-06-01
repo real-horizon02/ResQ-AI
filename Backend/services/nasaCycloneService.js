@@ -1,12 +1,18 @@
 import axios from "axios";
 import { isLocationInIndia } from "../utils/geoUtils.js";
+import { fetchWithRetry } from "../utils/apiRetry.js";
+import { mockDisasterData } from "../data/mockDisasters.js";
 
 // 🌍 NASA EONET API (all disasters)
 const EONET_URL = "https://eonet.gsfc.nasa.gov/api/v3/events?limit=500";
 
 export const getGdacsData = async () => {
   try {
-    const response = await axios.get(EONET_URL);
+    const response = await fetchWithRetry(EONET_URL, {
+      maxRetries: 2,
+      baseDelay: 1000,
+    });
+
     const events = response.data.events;
 
     const disasters = [];
@@ -53,10 +59,15 @@ export const getGdacsData = async () => {
 
     console.log(`[EONET] India disasters found: ${disasters.length}`);
 
+    if (disasters.length === 0) {
+      console.log(`[EONET] No disasters found. Using mock cyclone data.`);
+      return mockDisasterData.cyclones;
+    }
+
     return disasters;
 
   } catch (err) {
-    console.error("[EONET] Error fetching data:", err.message);
-    return [];
+    console.warn(`[EONET] API failed (${err.message}). Using mock cyclone data.`);
+    return mockDisasterData.cyclones;
   }
 };

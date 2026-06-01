@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export type Role = 'user' | 'admin' | 'volunteer';
+export type Role = 'admin' | 'volunteer';
 
 interface RoleSelectionProps {
   onContinue?: (role: Role) => void;
@@ -16,19 +16,6 @@ const ROLES: {
   glowColor: string;
   icon: React.ReactNode;
 }[] = [
-  {
-    id: 'user',
-    title: 'User',
-    description: 'Get help and stay informed',
-    accentColor: '#00D4FF',
-    glowColor: 'rgba(0, 212, 255, 0.18)',
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-  },
   {
     id: 'admin',
     title: 'Admin',
@@ -58,17 +45,7 @@ const ROLES: {
   },
 ];
 
-const containerVariants = {
-  hidden: {},
-  show: {
-    transition: { staggerChildren: 0.1 },
-  },
-};
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 24 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
-};
 
 export const RoleSelection: React.FC<RoleSelectionProps> = ({ onContinue, onSwitch }) => {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -81,48 +58,10 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onContinue, onSwit
 
   return (
     <div style={{ width: '100%', textAlign: 'center' }}>
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: 40 }}
-      >
-        <span
-          className="label-caps-gold"
-          style={{ display: 'block', marginBottom: 14 }}
-        >
-          [ STEP 1 OF 2 ]
-        </span>
-        <h2
-          style={{
-            fontFamily: 'Playfair Display',
-            fontStyle: 'italic',
-            fontSize: 'clamp(32px, 5vw, 48px)',
-            color: 'var(--text-primary)',
-            margin: 0,
-            lineHeight: 1.1,
-          }}
-        >
-          Who are you?
-        </h2>
-        <p
-          style={{
-            fontFamily: 'DM Sans',
-            fontSize: 15,
-            color: 'var(--text-muted)',
-            margin: '12px 0 0',
-          }}
-        >
-          Select your role to personalize your experience.
-        </p>
-      </motion.div>
+
 
       {/* Cards Grid */}
       <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -130,13 +69,15 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onContinue, onSwit
           marginBottom: 40,
         }}
       >
-        {ROLES.map((role) => {
+        {ROLES.map((role, index) => {
           const isSelected = selectedRole === role.id;
 
           return (
             <motion.button
               key={role.id}
-              variants={cardVariants}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: index * 0.1 }}
               whileHover={{ scale: 1.03, y: -4 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => setSelectedRole(role.id)}
