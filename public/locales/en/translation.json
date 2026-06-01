@@ -1,0 +1,71 @@
+{
+  "nav": {
+    "map": "Disaster Map",
+    "volunteer": "Volunteer"
+  },
+  "home": {
+    "hero_label": "INDIA'S EMERGENCY RESPONSE PLATFORM",
+    "hero_when": "when",
+    "hero_seconds": "seconds",
+    "hero_matter": "matter,",
+    "hero_data": "data",
+    "hero_saves": "saves lives",
+    "hero_subtitle": "AI-powered disaster coordination platform for a resilient India. Real-time. Everywhere. Always.",
+    "cta_sos": "🚨 Send SOS",
+    "cta_map": "View Live Map →",
+    
+    "mission_label": "MISSION",
+    "mission_text": "ResQ AI was built on a single belief: in the chaos of disaster, the right information delivered at the right time saves lives. We combine satellite data, AI prediction, and human networks to create India's most responsive emergency coordination platform.",
+    
+    "platform_label": "PLATFORM",
+    "platform_title": "Real-time. Everywhere. Always.",
+    "platform_live_map": "Live Map",
+    "platform_sos_engine": "SOS Engine",
+    "platform_volunteers": "Volunteers",
+    
+    "features_label": "FEATURES",
+    "features_title": "purpose-built for crisis",
+    
+    "feature_1_code": "LIVE-05",
+    "feature_1_title": "Real-Time Monitoring",
+    "feature_1_desc": "Live data from USGS, IMD, NASA FIRMS - refreshed every 5 minutes.",
+    "feature_1_metric": "5m",
+    
+    "feature_2_code": "SOS-01",
+    "feature_2_title": "Sub-Second SOS",
+    "feature_2_desc": "One tap sends GPS location to NDRF and nearby volunteers instantly.",
+    "feature_2_metric": "<1s",
+    
+    "feature_3_code": "RISK-ML",
+    "feature_3_title": "AI Risk Heatmaps",
+    "feature_3_desc": "XGBoost flood prediction overlays with confidence intervals.",
+    "feature_3_metric": "AI",
+    
+    "feature_4_code": "OFF-NET",
+    "feature_4_title": "Offline-First",
+    "feature_4_desc": "Reports queue without internet, then sync cleanly on reconnect.",
+    "feature_4_metric": "0G",
+    
+    "feature_5_code": "VOL-5K",
+    "feature_5_title": "Volunteer Network",
+    "feature_5_desc": "Verified first responders dispatched within 5km using PostGIS.",
+    "feature_5_metric": "5km",
+    
+    "feature_6_code": "CMD-24",
+    "feature_6_title": "Command Center",
+    "feature_6_desc": "Live incident management, resource allocation, and alert routing.",
+    "feature_6_metric": "24/7",
+    
+    "lifecycle_title": "the rescue lifecycle",
+    "lifecycle_step1_title": "Citizen Reports",
+    "lifecycle_step1_desc": "One-tap SOS with auto GPS location capture.",
+    "lifecycle_step2_title": "AI Processing",
+    "lifecycle_step2_desc": "Severity classification and resource allocation AI.",
+    "lifecycle_step3_title": "Admin Verify",
+    "lifecycle_step3_desc": "Command center confirms and escalates the incident.",
+    "lifecycle_step4_title": "Dispatch",
+    "lifecycle_step4_desc": "Nearest volunteers dispatched via PostGIS spatial query.",
+    "lifecycle_step5_title": "Resolved",
+    "lifecycle_step5_desc": "Incident closed, data logged, community notified."
+  }
+}

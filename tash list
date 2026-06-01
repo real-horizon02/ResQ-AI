@@ -1,0 +1,19 @@
+[33ma6ec888[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{Sun May 31 16:13:25 2026}: commit: feat: add UI components, i18n locales, email service, and data integration services
+[33m90ec777[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{Sun May 31 15:56:21 2026}: reset: moving to HEAD
+[33m90ec777[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{Sun May 24 22:35:24 2026}: commit: feat: refactor map page, integrate theme toggle & language switcher, clean up unused map components
+[33m2f93392[m HEAD@{Wed Mar 25 19:58:27 2026}: commit: fix: downgrade react-leaflet v5->v4, rewrite Map with fixed layout, fix cursor CSS, fix auth store state, apply Supabase schema
+[33m285dc69[m HEAD@{Wed Mar 25 19:03:40 2026}: commit: feat: auth+map+admin - Supabase OAuth, admin guard, navbar avatar, map height fix, admin approval queue
+[33m05ac064[m HEAD@{Wed Mar 25 18:05:09 2026}: commit: fix(09): fix PageTransition overlay covering content, remove broken i18n import
+[33mc490990[m HEAD@{Wed Mar 25 17:43:07 2026}: commit: feat(09): Phase 9 complete — premium cinematic ResQ AI UI, 7 pages, 12 animations
+[33mf121d68[m HEAD@{Wed Mar 25 17:05:52 2026}: commit: plan(09): write all 10 PLAN.md files for Phase 9 premium UI (6 waves)
+[33m24759b0[m HEAD@{Wed Mar 25 16:52:06 2026}: commit: docs(09): generate CONTEXT.md and UI-SPEC.md for Phase 9 premium UI
+[33m1752acb[m HEAD@{Wed Mar 25 03:05:20 2026}: commit: feat(phase9): code audit — remove any types, add error boundary + toasts + skeletons, live data integration
+[33m19a9287[m HEAD@{Wed Mar 25 02:52:08 2026}: commit: docs: define milestone v1.1 requirements and roadmap (32 reqs, 4 phases)
+[33m2cb938a[m HEAD@{Wed Mar 25 02:47:41 2026}: commit: docs: start milestone v1.1 Quality, UI/UX & Interactivity Overhaul
+[33md2d8220[m HEAD@{Tue Mar 24 21:20:37 2026}: Branch: renamed refs/heads/main to refs/heads/main
+[33md2d8220[m HEAD@{Tue Mar 24 21:19:56 2026}: commit: Initial commit - ResQ AI project
+[33m0e4f472[m HEAD@{Sun Mar 22 21:56:40 2026}: Branch: renamed refs/heads/master to refs/heads/main
+[33m0e4f472[m HEAD@{Sun Mar 22 21:56:40 2026}: commit: chore(infra): initial commit - supabase foundation, schema, and seed data
+[33m1b981d5[m HEAD@{Sun Mar 22 21:48:20 2026}: commit: feat(phase-1): add research and 4 execution plans for Supabase + infrastructure
+[33m4114cc9[m HEAD@{Sun Mar 22 21:04:00 2026}: commit: docs: add research, requirements, and roadmap
+[33m81fc552[m HEAD@{Sun Mar 22 20:36:03 2026}: commit (initial): docs: initialize project and config

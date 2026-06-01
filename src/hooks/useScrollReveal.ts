@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export function useTextReveal(threshold = 0.1, delay = 0) {
+export function useScrollReveal(threshold = 0.2) {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -8,11 +8,12 @@ export function useTextReveal(threshold = 0.1, delay = 0) {
     const observer = new IntersectionObserver(
       ([entry]) => {
         // Bidirectional: fade in when entering viewport, fade out when leaving
+        // Use intersectionRatio to determine visibility
         setIsVisible(entry.intersectionRatio >= threshold);
       },
       { 
-        threshold: [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5],
-        rootMargin: '0px 0px -10% 0px' // Trigger slightly before element is fully visible
+        threshold: [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0],
+        rootMargin: '0px 0px 0px 0px' // No margin for precise detection
       }
     );
 
@@ -28,13 +29,5 @@ export function useTextReveal(threshold = 0.1, delay = 0) {
     };
   }, [threshold]);
 
-  return { 
-    ref, 
-    isVisible,
-    style: {
-      opacity: isVisible ? 1 : 0,
-      transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-      transition: `opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s`
-    }
-  };
+  return { ref, isVisible };
 }

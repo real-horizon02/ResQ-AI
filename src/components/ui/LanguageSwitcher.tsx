@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Languages, ChevronDown, Check } from 'lucide-react';
+import { Globe, Check } from 'lucide-react';
 
 const LANGUAGES = [
   { code: 'en', label: 'English', native: 'English' },
@@ -35,43 +35,98 @@ export function LanguageSwitcher({ variant = 'default' }: { variant?: 'default' 
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all duration-300 ${
-          variant === 'outline' 
-            ? 'border border-glass-border bg-glass hover:border-accent-cyan/50 text-text-primary'
-            : 'hover:bg-glass-heavy text-text-muted hover:text-text-primary'
-        }`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 16px',
+          borderRadius: 999,
+          fontFamily: 'DM Sans',
+          fontSize: 13,
+          fontWeight: 500,
+          letterSpacing: '0.02em',
+          border: '1px solid var(--glass-border)',
+          background: 'var(--glass)',
+          color: 'var(--text-primary)',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent-cyan)';
+          e.currentTarget.style.background = 'var(--glass-heavy)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--glass-border)';
+          e.currentTarget.style.background = 'var(--glass)';
+        }}
         aria-label="Select Language"
       >
-        <Languages className="w-3.5 h-3.5" />
-        <span>{currentLanguage.code}</span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        <Globe size={16} strokeWidth={2} />
+        <span>{currentLanguage.native}</span>
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="absolute top-full right-0 mt-2 min-w-[140px] bg-bg-surface/90 backdrop-blur-xl border border-glass-border rounded-xl shadow-2xl z-[100] overflow-hidden"
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 8px)',
+              right: 0,
+              minWidth: 160,
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 12,
+              overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+              zIndex: 500,
+            }}
           >
-            <div className="p-1.5 flex flex-col gap-1">
+            <div style={{ padding: '6px' }}>
               {LANGUAGES.map((lang) => (
                 <button
                   key={lang.code}
                   onClick={() => changeLanguage(lang.code)}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                    i18n.language === lang.code
-                      ? 'bg-accent-cyan/10 text-accent-cyan font-semibold'
-                      : 'text-text-muted hover:bg-glass hover:text-text-primary text-left'
-                  }`}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    fontFamily: 'DM Sans',
+                    fontSize: 13,
+                    fontWeight: i18n.language === lang.code ? 600 : 400,
+                    textAlign: 'left',
+                    border: 'none',
+                    background: i18n.language === lang.code ? 'var(--glass)' : 'transparent',
+                    color: i18n.language === lang.code ? 'var(--accent-cyan)' : 'var(--text-primary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (i18n.language !== lang.code) {
+                      e.currentTarget.style.background = 'var(--glass)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (i18n.language !== lang.code) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
                 >
-                  <div className="flex flex-col items-start leading-tight">
-                    <span className="text-[10px] opacity-50 uppercase tracking-tighter mb-0.5">{lang.label}</span>
-                    <span className="font-medium">{lang.native}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>{lang.native}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {lang.label}
+                    </span>
                   </div>
-                  {i18n.language === lang.code && <Check className="w-4 h-4 ml-2" />}
+                  {i18n.language === lang.code && (
+                    <Check size={16} strokeWidth={2.5} style={{ color: 'var(--accent-cyan)' }} />
+                  )}
                 </button>
               ))}
             </div>

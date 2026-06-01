@@ -1,12 +1,11 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
-import HttpBackend from 'i18next-http-backend'
 
-// Import translation resources
-import enTranslation from './locales/en/translation.json'
-import hiTranslation from './locales/hi/translation.json'
-import hinglishTranslation from './locales/hinglish/translation.json'
+// Import translation resources from public folder
+import enTranslation from '../../public/locales/en/translation.json'
+import hiTranslation from '../../public/locales/hi/translation.json'
+import hinglishTranslation from '../../public/locales/hinglish/translation.json'
 
 const resources = {
   en: {
@@ -26,7 +25,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    debug: false,
+    debug: true, // Enable debug to see translation issues
     interpolation: {
       escapeValue: false,
     },

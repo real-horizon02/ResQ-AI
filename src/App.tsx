@@ -1,11 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   createBrowserRouter,
   RouterProvider,
-  Routes,
-  Route,
   Outlet,
 } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLenis } from './hooks/useLenis';
 import { CustomCursor } from './components/ui/CustomCursor';
 import { PageTransition } from './components/ui/PageTransition';
@@ -15,6 +14,7 @@ import { OfflineBanner } from './components/ui/OfflineBanner';
 import { AdminGuard } from './components/AdminGuard';
 import { useAuthStore } from './store/useAuthStore';
 import { ThemeToggle } from './components/ui/ThemeToggle';
+import { CinematicLoader } from './components/CinematicLoader';
 import Home from './pages/Home';
 import MapPage from './pages/Map';
 import SOSPage from './pages/SOS';
@@ -81,7 +81,25 @@ const router = createBrowserRouter(
 );
 
 function App() {
-  return <RouterProvider router={router} />;
+  console.log('🎯 App.tsx: Rendering App component');
+  const [loaderComplete, setLoaderComplete] = useState(false);
+
+  return (
+    <>
+      <CinematicLoader onComplete={() => setLoaderComplete(true)} />
+      <AnimatePresence>
+        {loaderComplete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          >
+            <RouterProvider router={router} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
 }
 
 export default App;

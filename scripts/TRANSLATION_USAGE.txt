@@ -1,0 +1,131 @@
+=================================================================
+ResQ AI - Translation System Usage Guide
+=================================================================
+
+SETUP
+-----
+1. Install Python dependencies:
+   pip install -r scripts/requirements.txt
+
+2. Ensure you have internet connection (for Google Translate API)
+
+
+TRANSLATION SCRIPTS
+-------------------
+
+1. MANUAL TRANSLATION (Recommended for initial setup)
+   python scripts/manual_translate.py
+   
+   - Translates core application texts
+   - Covers: Hero, Navigation, Features, SOS, Map, Common texts
+   - Languages: Hindi, Bengali, Telugu, Marathi, Tamil, Gujarati, 
+                Kannada, Malayalam, Punjabi, Odia, Assamese
+   - Output: public/locales/{lang}/translation.json
+
+2. AUTOMATIC TRANSLATION (For comprehensive coverage)
+   python scripts/auto_translate.py
+   
+   - Scans all React/TypeScript files
+   - Extracts translatable text automatically
+   - Translates everything found
+   - Takes longer but more comprehensive
+
+
+SUPPORTED LANGUAGES
+-------------------
+- en: English (source)
+- hi: Hindi (हिंदी)
+- bn: Bengali (বাংলা)
+- te: Telugu (తెలుగు)
+- mr: Marathi (मराठी)
+- ta: Tamil (தமிழ்)
+- gu: Gujarati (ગુજરાતી)
+- kn: Kannada (ಕನ್ನಡ)
+- ml: Malayalam (മലയാളം)
+- pa: Punjabi (ਪੰਜਾਬੀ)
+- or: Odia (ଓଡ଼ିଆ)
+- as: Assamese (অসমীয়া)
+
+
+USAGE IN CODE
+-------------
+1. Import useTranslation hook:
+   import { useTranslation } from 'react-i18next';
+
+2. Use in component:
+   const { t } = useTranslation();
+   
+3. Translate text:
+   <h1>{t('hero_title')}</h1>
+   <p>{t('hero_subtitle')}</p>
+
+4. With variables:
+   {t('welcome_message', { name: userName })}
+
+
+FILE STRUCTURE
+--------------
+public/
+  locales/
+    en/
+      translation.json  (English)
+    hi/
+      translation.json  (Hindi)
+    bn/
+      translation.json  (Bengali)
+    ... (other languages)
+
+
+TRANSLATION KEYS
+----------------
+Format: lowercase_with_underscores
+
+Examples:
+- hero_title
+- nav_home
+- feature_realtime_desc
+- sos_activated
+- error_message
+
+
+BEST PRACTICES
+--------------
+1. Keep keys descriptive and organized by section
+2. Use consistent naming conventions
+3. Avoid hardcoded text in components
+4. Test all languages before deployment
+5. Review auto-translations for accuracy
+6. Update translations when adding new features
+
+
+TROUBLESHOOTING
+---------------
+Q: Translation fails with rate limit error
+A: Add time.sleep() delays between translations
+
+Q: Some texts not translating correctly
+A: Edit JSON files manually for better accuracy
+
+Q: Missing translations
+A: Run manual_translate.py to add core texts first
+
+Q: Language not switching in app
+A: Check i18n configuration in src/i18n.ts
+
+
+MAINTENANCE
+-----------
+- Run translation scripts when adding new features
+- Review and update translations quarterly
+- Get native speaker feedback for accuracy
+- Keep translation.json files in version control
+
+
+CONTACT
+-------
+For translation issues or improvements:
+- Check existing translations in public/locales/
+- Update scripts as needed
+- Test thoroughly before deployment
+
+=================================================================

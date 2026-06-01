@@ -1,0 +1,71 @@
+{
+  "nav": {
+    "map": "आपदा मानचित्र",
+    "volunteer": "स्वयंसेवक"
+  },
+  "home": {
+    "hero_label": "भारत का आपातकालीन प्रतिक्रिया मंच",
+    "hero_when": "जब",
+    "hero_seconds": "सेकंड",
+    "hero_matter": "मायने रखते हैं,",
+    "hero_data": "डेटा",
+    "hero_saves": "जीवन बचाता है",
+    "hero_subtitle": "एक लचीले भारत के लिए एआई-संचालित आपदा समन्वय मंच। वास्तविक समय। हर जगह। हमेशा।",
+    "cta_sos": "🚨 SOS भेजें",
+    "cta_map": "लाइव मानचित्र देखें →",
+    
+    "mission_label": "मिशन",
+    "mission_text": "ResQ AI एक विश्वास पर बनाया गया था: आपदा की अराजकता में, सही समय पर सही जानकारी जीवन बचाती है। हम भारत का सबसे प्रतिक्रियाशील आपातकालीन समन्वय मंच बनाने के लिए उपग्रह डेटा, एआई भविष्यवाणी और मानव नेटवर्क को जोड़ते हैं।",
+    
+    "platform_label": "प्लेटफॉर्म",
+    "platform_title": "वास्तविक समय। हर जगह। हमेशा।",
+    "platform_live_map": "लाइव मानचित्र",
+    "platform_sos_engine": "SOS इंजन",
+    "platform_volunteers": "स्वयंसेवक",
+    
+    "features_label": "विशेषताएं",
+    "features_title": "संकट के लिए बनाया गया",
+    
+    "feature_1_code": "LIVE-05",
+    "feature_1_title": "रीयल-टाइम निगरानी",
+    "feature_1_desc": "USGS, IMD, NASA FIRMS से लाइव डेटा - हर 5 मिनट में रिफ्रेश।",
+    "feature_1_metric": "5m",
+    
+    "feature_2_code": "SOS-01",
+    "feature_2_title": "सब-सेकंड SOS",
+    "feature_2_desc": "एक टैप से NDRF और आस-पास के स्वयंसेवकों को GPS स्थान भेजें।",
+    "feature_2_metric": "<1s",
+    
+    "feature_3_code": "RISK-ML",
+    "feature_3_title": "AI जोखिम हीटमैप",
+    "feature_3_desc": "विश्वास अंतराल के साथ XGBoost बाढ़ भविष्यवाणी ओवरले।",
+    "feature_3_metric": "AI",
+    
+    "feature_4_code": "OFF-NET",
+    "feature_4_title": "ऑफलाइन-फर्स्ट",
+    "feature_4_desc": "इंटरनेट के बिना रिपोर्ट कतार, फिर पुनः कनेक्ट पर सिंक।",
+    "feature_4_metric": "0G",
+    
+    "feature_5_code": "VOL-5K",
+    "feature_5_title": "स्वयंसेवक नेटवर्क",
+    "feature_5_desc": "PostGIS का उपयोग करके 5km के भीतर सत्यापित प्रथम उत्तरदाता भेजे गए।",
+    "feature_5_metric": "5km",
+    
+    "feature_6_code": "CMD-24",
+    "feature_6_title": "कमांड सेंटर",
+    "feature_6_desc": "लाइव घटना प्रबंधन, संसाधन आवंटन और अलर्ट रूटिंग।",
+    "feature_6_metric": "24/7",
+    
+    "lifecycle_title": "बचाव जीवनचक्र",
+    "lifecycle_step1_title": "नागरिक रिपोर्ट",
+    "lifecycle_step1_desc": "स्वचालित GPS स्थान कैप्चर के साथ वन-टैप SOS।",
+    "lifecycle_step2_title": "AI प्रोसेसिंग",
+    "lifecycle_step2_desc": "गंभीरता वर्गीकरण और संसाधन आवंटन AI।",
+    "lifecycle_step3_title": "व्यवस्थापक सत्यापन",
+    "lifecycle_step3_desc": "कमांड सेंटर घटना की पुष्टि करता है और बढ़ाता है।",
+    "lifecycle_step4_title": "प्रेषण",
+    "lifecycle_step4_desc": "PostGIS स्थानिक क्वेरी के माध्यम से निकटतम स्वयंसेवक भेजे गए।",
+    "lifecycle_step5_title": "हल किया गया",
+    "lifecycle_step5_desc": "घटना बंद, डेटा लॉग किया गया, समुदाय को सूचित किया गया।"
+  }
+}

@@ -9,9 +9,25 @@
     <link rel="icon" href="/pwa-192x192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&family=JetBrains+Mono:wght@400;700;900&family=Orbitron:wght@900&family=Archivo+Black&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      /* Prevent flash of content during loader */
+      #root {
+        opacity: 0;
+        animation: fadeInRoot 0.1s ease-in 0.05s forwards;
+      }
+      @keyframes fadeInRoot {
+        to { opacity: 1; }
+      }
+    </style>
   </head>
   <body>
+    <script>
+      // Prevent flash of light theme on page load
+      const theme = localStorage.getItem('resq-theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    </script>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

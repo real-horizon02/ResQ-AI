@@ -56,32 +56,32 @@ export default function SOSButton() {
         onMouseUp={endPress}
         onTouchStart={startPress}
         onTouchEnd={endPress}
-        className="fixed bottom-24 right-6 w-16 h-16 bg-urgency-gradient rounded-full shadow-emergency flex items-center justify-center z-[90] active:scale-95 transition-transform emergency-glow"
+        className="fixed bottom-24 right-6 w-14 h-14 bg-urgency-gradient rounded-full shadow-emergency flex items-center justify-center z-[90] active:scale-95 transition-transform emergency-glow"
       >
         <div className="absolute inset-0 rounded-full border-4 border-white/10" />
         {progress > 0 && (
           <svg className="absolute inset-0 w-full h-full -rotate-90">
             <circle
-              cx="32"
-              cy="32"
-              r="28"
+              cx="28"
+              cy="28"
+              r="24"
               fill="transparent"
               stroke="white"
-              strokeWidth="4"
-              strokeDasharray={`${(progress / 100) * 175.9} 175.9`}
+              strokeWidth="3"
+              strokeDasharray={`${(progress / 100) * 150.8} 150.8`}
               className="transition-all duration-75"
             />
           </svg>
         )}
         <div className="flex flex-col items-center">
-          {loading ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : <AlertCircle className="w-8 h-8 text-white" />}
-          <span className="text-[8px] font-black text-white uppercase tracking-tighter mt-0.5">SOS</span>
+          {loading ? <Loader2 className="w-5 h-5 animate-spin text-white" /> : <AlertCircle className="w-7 h-7 text-white" />}
+          <span className="text-[7px] font-black text-white uppercase tracking-tighter mt-0.5">SOS</span>
         </div>
       </button>
 
       {/* Accidental click deterrent message */}
       {progress > 0 && progress < 100 && (
-        <div className="fixed bottom-44 right-6 bg-sentinel-on-surface text-white px-4 py-2 rounded-xl text-xs font-bold animate-pulse z-[95] shadow-lg">
+        <div className="fixed bottom-40 right-6 bg-sentinel-on-surface text-white px-4 py-2 rounded-xl text-xs font-bold animate-pulse z-[95] shadow-lg">
           HOLD TO TRIGGER SOS ({Math.ceil((100 - progress) / 33.3)}s)
         </div>
       )}

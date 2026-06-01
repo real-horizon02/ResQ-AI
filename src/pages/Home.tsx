@@ -14,6 +14,8 @@ import { useNumberCounter } from '../hooks/useNumberCounter';
 import { useStaggeredReveal } from '../hooks/useStaggeredReveal';
 import { useHomeStats } from '../hooks/useHomeStats';
 import { useDisasters } from '../hooks/useDisasters';
+import { useScrollReveal } from '../hooks/useScrollReveal';
+import { useTextReveal } from '../hooks/useTextReveal';
 import Radar from '../components/ui/Radar.tsx';
 
 /* ── Hero Section ───────────────────────────────── */
@@ -21,6 +23,7 @@ function HeroSection() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [revealed, setRevealed] = useState(false);
+  const [showTicker, setShowTicker] = useState(false);
   const { volunteers, activeAlerts, statesCovered } = useHomeStats();
 
   useEffect(() => {
@@ -28,8 +31,16 @@ function HeroSection() {
     return () => clearTimeout(t);
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowTicker(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden', background: 'var(--bg)' }}>
+    <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', background: 'var(--bg)' }}>
       <div style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0, opacity: 0.8 }}>
         <Radar 
           speed={1.0}
@@ -51,31 +62,40 @@ function HeroSection() {
       </div>
 
       {/* Hero content */}
-      <div style={{ position: 'relative', zIndex: 2, padding: 'clamp(100px,12vh,160px) clamp(24px, 8vw, 96px) 60px', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+      <div style={{ position: 'relative', zIndex: 2, padding: '0 clamp(24px, 8vw, 96px)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', maxWidth: '100%' }}>
         {/* Label */}
-        <div className="label-caps-gold" style={{ marginBottom: 32, opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.1s' }}>
+        <div className="label-caps-gold" style={{ marginBottom: 40, opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.1s' }}>
           [ {t('home.hero_label')} ]
         </div>
 
         {/* Headline */}
-        <div style={{ lineHeight: 1.05, marginBottom: 32 }}>
-          <div style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(40px, 6vw, 80px)', color: 'var(--text-muted)', opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s' }}>
+        <div style={{ lineHeight: 1, marginBottom: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: '900px' }}>
+          {/* when */}
+          <div style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(32px, 5vw, 64px)', color: 'var(--text-muted)', opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.15s' }}>
             {t('home.hero_when')}
           </div>
-          <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(72px, 12vw, 140px)', color: 'var(--text-primary)', lineHeight: 0.95, opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.25s' }}>
+          
+          {/* seconds */}
+          <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(64px, 10vw, 120px)', color: 'var(--text-primary)', lineHeight: 0.9, opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.25s' }}>
             {t('home.hero_seconds')}
           </div>
-          <div style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(40px, 6vw, 80px)', color: 'var(--text-muted)', opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.35s' }}>
-            {t('home.hero_matter')}
+          
+          {/* matter, data */}
+          <div style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(32px, 5vw, 64px)', color: 'var(--text-muted)', opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.35s', display: 'flex', alignItems: 'baseline', gap: '0.3em', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span>{t('home.hero_matter')}</span>
+            <span style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(56px, 8vw, 100px)', lineHeight: 1, color: 'var(--accent-red)' }}>
+              {t('home.hero_data')}
+            </span>
           </div>
-          <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(56px, 8vw, 100px)', lineHeight: 1, opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.45s' }}>
-              <span style={{ color: 'var(--accent-red)' }}>{t('home.hero_data')}</span>
-              <span style={{ color: 'var(--text-primary)' }}>{t('home.hero_saves')}</span>
+          
+          {/* saves lives */}
+          <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontWeight: 700, fontSize: 'clamp(56px, 8vw, 100px)', lineHeight: 1, color: 'var(--text-primary)', opacity: revealed ? 1 : 0, transform: revealed ? 'translateY(0)' : 'translateY(40px)', transition: 'all 0.7s cubic-bezier(0.16,1,0.3,1) 0.45s' }}>
+            {t('home.hero_saves')}
           </div>
         </div>
 
         {/* Sub-copy */}
-        <p style={{ fontFamily: 'DM Sans', fontSize: 18, color: 'var(--text-muted)', maxWidth: 520, lineHeight: 1.6, marginBottom: 40, opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.55s' }}>
+        <p style={{ fontFamily: 'DM Sans', fontSize: 16, color: 'var(--text-muted)', maxWidth: 600, lineHeight: 1.6, marginBottom: 48, opacity: revealed ? 1 : 0, transition: 'opacity 0.6s ease 0.55s' }}>
           {t('home.hero_subtitle')}
         </p>
 
@@ -88,11 +108,6 @@ function HeroSection() {
             {t('home.cta_map')}
           </button>
         </div>
-
-        {/* Bottom labels */}
-        <div style={{ position: 'absolute', bottom: 40, left: 'clamp(24px, 8vw, 96px)', opacity: revealed ? 0.5 : 0, transition: 'opacity 0.6s ease 0.8s' }}>
-          <span className="label-caps">EST. 2024 — ANTIGRAVITY AI</span>
-        </div>
       </div>
 
       {/* Scroll indicator */}
@@ -102,11 +117,40 @@ function HeroSection() {
       </div>
 
       {/* Status ticker */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, overflow: 'hidden', borderTop: '1px solid var(--glass-border)', background: 'rgba(6,9,15,0.6)', padding: '10px 0' }}>
-        <div className="animate-marquee" style={{ display: 'flex', gap: 80, width: 'max-content' }}>
-          {[...Array(4)].map((_, i) => (
-            <span key={i} style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              🟢 {volunteers} Volunteers Online &nbsp;·&nbsp; 🔴 {activeAlerts} Active Alerts &nbsp;·&nbsp; ⚡ Real-time Data Sync &nbsp;·&nbsp; 🇮🇳 Covering {statesCovered} States
+      <div style={{ 
+        position: 'absolute', 
+        bottom: 0, 
+        left: 0, 
+        right: 0, 
+        overflow: 'hidden', 
+        borderTop: '1px solid rgba(255,255,255,0.05)', 
+        background: 'rgba(6,9,15,0.85)', 
+        backdropFilter: 'blur(10px)', 
+        padding: '12px 0',
+        marginTop: '20px',
+        transform: showTicker ? 'translateY(0)' : 'translateY(100%)',
+        opacity: showTicker ? 1 : 0,
+        transition: 'transform 0.4s ease, opacity 0.4s ease'
+      }}>
+        <div className="animate-marquee" style={{ display: 'flex', gap: 60, width: 'max-content' }}>
+          {[...Array(3)].map((_, i) => (
+            <span key={i} style={{ fontFamily: 'DM Sans', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 60 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-cyan)', opacity: 0.8 }} />
+                Platform in Development
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-gold)', opacity: 0.8 }} />
+                Integrating USGS & IMD APIs
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-green)', opacity: 0.8 }} />
+                Built for India's Emergency Response
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-red)', opacity: 0.8 }} />
+                Open Source Project
+              </span>
             </span>
           ))}
         </div>
@@ -117,6 +161,11 @@ function HeroSection() {
 
 /* ── Mission Section ────────────────────────────── */
 function MissionSection() {
+  const { t } = useTranslation();
+  const { ref, isVisible } = useScrollReveal(0.15);
+  const label = useTextReveal(0.1, 0);
+  const text = useTextReveal(0.1, 0.1);
+  const divider = useTextReveal(0.1, 0.2);
   const { value: v1, ref: r1 } = useNumberCounter(6);
   const { value: v2, ref: r2 } = useNumberCounter(15); // 15 / 10 = 1.5s
   const { value: v3, ref: r3 } = useNumberCounter(5);
@@ -129,26 +178,41 @@ function MissionSection() {
     { ref: r4, value: v4, label: 'OFFLINE QUEUING', suffix: '%' },
   ];
 
+  const stat1 = useTextReveal(0.1, 0.3);
+  const stat2 = useTextReveal(0.1, 0.4);
+  const stat3 = useTextReveal(0.1, 0.5);
+  const stat4 = useTextReveal(0.1, 0.6);
+  const statReveals = [stat1, stat2, stat3, stat4];
+
   return (
-    <section style={{ padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', background: 'var(--bg)' }}>
+    <section 
+      ref={ref}
+      style={{ 
+        padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', 
+        background: 'var(--bg)',
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(60px)',
+        transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
+    >
       <div style={{ display: 'flex', gap: 80, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 auto' }}>
-          <span className="label-caps-gold">[ 001 — MISSION ]</span>
+          <span ref={label.ref} className="label-caps-gold" style={label.style}>[ 001 — {t('home.mission_label')} ]</span>
         </div>
         <div style={{ flex: 1, minWidth: 280 }}>
-          <p style={{ fontFamily: 'DM Sans', fontSize: 'clamp(18px, 2vw, 26px)', lineHeight: 1.7, color: 'var(--text-primary)', marginBottom: 48, maxWidth: 680 }}>
-            ResQ AI was built on a single belief: in the chaos of disaster, the right information delivered at the right time saves lives. We combine satellite data, AI prediction, and human networks to create India's most responsive emergency coordination platform.
+          <p ref={text.ref} style={{ ...text.style, fontFamily: 'DM Sans', fontSize: 'clamp(18px, 2vw, 26px)', lineHeight: 1.7, color: 'var(--text-primary)', marginBottom: 48, maxWidth: 680 }}>
+            {t('home.mission_text')}
           </p>
 
           {/* Divider */}
-          <div style={{ height: 1, marginBottom: 48, overflow: 'hidden', background: 'var(--glass-border)', position: 'relative' }}>
+          <div ref={divider.ref} style={{ ...divider.style, height: 1, marginBottom: 48, overflow: 'hidden', background: 'var(--glass-border)', position: 'relative' }}>
             <div style={{ position: 'absolute', inset: 0, background: 'var(--accent-gold)', animation: 'line-draw 2s ease forwards', animationDelay: '0.5s' }} />
           </div>
 
           {/* Stats */}
           <div style={{ display: 'flex', gap: 48, flexWrap: 'wrap' }}>
             {stats.map((s, i) => (
-              <div key={i}>
+              <div key={i} ref={statReveals[i].ref} style={statReveals[i].style}>
                 <div
                   ref={s.ref as React.RefObject<HTMLDivElement>}
                   style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 5vw, 56px)', color: 'var(--text-primary)', lineHeight: 1 }}
@@ -167,7 +231,13 @@ function MissionSection() {
 
 /* ── Platform Preview ───────────────────────────── */
 function PlatformPreview() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const { ref, isVisible } = useScrollReveal(0.15);
+  const label = useTextReveal(0.1, 0);
+  const title = useTextReveal(0.1, 0.1);
+  const tabs = useTextReveal(0.1, 0.2);
+  const [activeTab, setActiveTab] = useState('map');
   const { disasters } = useDisasters();
 
   const severities = { critical: 4, high: 3, medium: 2, low: 1 };
@@ -192,22 +262,82 @@ function PlatformPreview() {
   const radiusKm = isDemo ? 45 : (topDisaster ? severities[topDisaster.severity] * 15 : 0);
 
   return (
-    <section style={{ padding: 'clamp(60px, 8vh, 80px) clamp(24px, 6vw, 64px)', background: 'var(--bg-surface)', position: 'relative', overflow: 'hidden' }}>
+    <section 
+      ref={ref}
+      style={{ 
+        padding: 'clamp(60px, 8vh, 80px) clamp(24px, 6vw, 64px)', 
+        background: 'var(--bg-surface)', 
+        position: 'relative', 
+        overflow: 'hidden',
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(60px)',
+        transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
+    >
       <div style={{ textAlign: 'center', marginBottom: 48 }}>
-        <span className="label-caps">[ 002 — PLATFORM ]</span>
-        <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 5vw, 72px)', color: 'var(--text-primary)', margin: '16px 0 32px' }}>
-          Real-time. Everywhere. Always.
+        <span ref={label.ref} className="label-caps" style={label.style}>[ 002 — {t('home.platform_label')} ]</span>
+        <h2 ref={title.ref} style={{ ...title.style, fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 5vw, 72px)', color: 'var(--text-primary)', margin: '16px 0 32px' }}>
+          {t('home.platform_title')}
         </h2>
         
         {/* Toggle buttons */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 48, flexWrap: 'wrap' }}>
-           <button style={{ background: 'transparent', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', padding: '8px 24px', borderRadius: 999, fontSize: 14, fontFamily: 'DM Sans' }}>Live Map</button>
-           <button style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', padding: '8px 24px', borderRadius: 999, fontSize: 14, fontFamily: 'DM Sans' }}>SOS Engine</button>
-           <button style={{ background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-muted)', padding: '8px 24px', borderRadius: 999, fontSize: 14, fontFamily: 'DM Sans' }}>Volunteers</button>
+        <div ref={tabs.ref} style={{ ...tabs.style, display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 48, flexWrap: 'wrap' }}>
+           <button 
+             onClick={() => setActiveTab('map')}
+             style={{ 
+               background: activeTab === 'map' ? 'var(--accent-cyan)' : 'transparent', 
+               border: `1px solid ${activeTab === 'map' ? 'var(--accent-cyan)' : 'var(--glass-border)'}`, 
+               color: activeTab === 'map' ? '#000' : 'var(--text-muted)', 
+               padding: '8px 24px', 
+               borderRadius: 999, 
+               fontSize: 14, 
+               fontFamily: 'DM Sans',
+               cursor: 'pointer',
+               transition: 'all 0.3s ease',
+               fontWeight: activeTab === 'map' ? 600 : 400
+             }}
+           >
+             {t('home.platform_live_map')}
+           </button>
+           <button 
+             onClick={() => setActiveTab('sos')}
+             style={{ 
+               background: activeTab === 'sos' ? 'var(--accent-red)' : 'transparent', 
+               border: `1px solid ${activeTab === 'sos' ? 'var(--accent-red)' : 'var(--glass-border)'}`, 
+               color: activeTab === 'sos' ? '#fff' : 'var(--text-muted)', 
+               padding: '8px 24px', 
+               borderRadius: 999, 
+               fontSize: 14, 
+               fontFamily: 'DM Sans',
+               cursor: 'pointer',
+               transition: 'all 0.3s ease',
+               fontWeight: activeTab === 'sos' ? 600 : 400
+             }}
+           >
+             {t('home.platform_sos_engine')}
+           </button>
+           <button 
+             onClick={() => setActiveTab('volunteers')}
+             style={{ 
+               background: activeTab === 'volunteers' ? 'var(--accent-green)' : 'transparent', 
+               border: `1px solid ${activeTab === 'volunteers' ? 'var(--accent-green)' : 'var(--glass-border)'}`, 
+               color: activeTab === 'volunteers' ? '#000' : 'var(--text-muted)', 
+               padding: '8px 24px', 
+               borderRadius: 999, 
+               fontSize: 14, 
+               fontFamily: 'DM Sans',
+               cursor: 'pointer',
+               transition: 'all 0.3s ease',
+               fontWeight: activeTab === 'volunteers' ? 600 : 400
+             }}
+           >
+             {t('home.platform_volunteers')}
+           </button>
         </div>
       </div>
 
-      {/* New specific card */}
+      {/* Tab Content */}
+      {activeTab === 'map' && (
       <div className="glass-card" style={{ maxWidth: 960, margin: '0 auto', padding: 32 }}>
         <span className="label-caps" style={{ color: 'var(--accent-cyan)', display: 'block', marginBottom: 24 }}>[ 001 — LIVE MAP ]</span>
         
@@ -254,31 +384,112 @@ function PlatformPreview() {
           </button>
         </div>
       </div>
+      )}
+
+      {activeTab === 'sos' && (
+      <div className="glass-card" style={{ maxWidth: 960, margin: '0 auto', padding: 32 }}>
+        <span className="label-caps" style={{ color: 'var(--accent-red)', display: 'block', marginBottom: 24 }}>[ 002 — SOS ENGINE ]</span>
+        
+        <div style={{ position: 'relative', height: 220, borderRadius: 12, overflow: 'hidden', background: '#0a0d14', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 40, border: '1px solid rgba(255,45,45,0.2)' }}>
+          <div style={{ textAlign: 'center', zIndex: 1 }}>
+            <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(56px, 8vw, 84px)', color: 'var(--accent-red)', lineHeight: 1, marginBottom: 16 }}>
+              &lt;1.5s
+            </div>
+            <div style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+              AVERAGE RESPONSE TIME
+            </div>
+          </div>
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(255,45,45,0.2) 0%, transparent 70%)' }} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 40, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 300 }}>
+            <h3 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 32, color: 'var(--text-primary)', margin: '0 0 16px' }}>Emergency Alert System</h3>
+            <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.7, margin: 0, maxWidth: 640 }}>
+              One-tap SOS button sends GPS location to NDRF and nearby volunteers instantly. Hold for 1.5 seconds to activate, preventing accidental triggers while ensuring rapid response.
+            </p>
+          </div>
+          <button className="btn-sos" onClick={() => navigate('/sos')} style={{ flexShrink: 0, fontSize: 15, padding: '12px 28px' }}>
+            Try SOS System →
+          </button>
+        </div>
+      </div>
+      )}
+
+      {activeTab === 'volunteers' && (
+      <div className="glass-card" style={{ maxWidth: 960, margin: '0 auto', padding: 32 }}>
+        <span className="label-caps" style={{ color: 'var(--accent-green)', display: 'block', marginBottom: 24 }}>[ 003 — VOLUNTEER NETWORK ]</span>
+        
+        <div style={{ position: 'relative', height: 220, borderRadius: 12, overflow: 'hidden', background: '#0a0d14', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 40, border: '1px solid rgba(0,230,118,0.2)' }}>
+          <div style={{ textAlign: 'center', zIndex: 1 }}>
+            <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(56px, 8vw, 84px)', color: 'var(--accent-green)', lineHeight: 1, marginBottom: 16 }}>
+              5km
+            </div>
+            <div style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+              DISPATCH RADIUS
+            </div>
+          </div>
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at center, rgba(0,230,118,0.2) 0%, transparent 70%)' }} />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 40, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 300 }}>
+            <h3 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 32, color: 'var(--text-primary)', margin: '0 0 16px' }}>Verified First Responders</h3>
+            <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: 'var(--text-muted)', lineHeight: 1.7, margin: 0, maxWidth: 640 }}>
+              PostGIS-powered spatial routing dispatches the nearest verified volunteers within 5km. Real-time location tracking and skill-based matching ensure the right help arrives fast.
+            </p>
+          </div>
+          <button className="btn-outline-cyan" onClick={() => navigate('/auth')} style={{ flexShrink: 0, fontSize: 15, padding: '12px 28px', background: 'var(--accent-green)', borderColor: 'var(--accent-green)', color: '#000' }}>
+            Join as Volunteer →
+          </button>
+        </div>
+      </div>
+      )}
     </section>
   );
 }
 
 /* ── How It Works ───────────────────────────────── */
 function HowItWorks() {
+  const { t } = useTranslation();
+  const { ref, isVisible } = useScrollReveal(0.15);
+  const title = useTextReveal(0.1, 0);
+  const step1 = useTextReveal(0.1, 0.1);
+  const step2 = useTextReveal(0.1, 0.2);
+  const step3 = useTextReveal(0.1, 0.3);
+  const step4 = useTextReveal(0.1, 0.4);
+  const step5 = useTextReveal(0.1, 0.5);
+  const stepReveals = [step1, step2, step3, step4, step5];
+  
   const STEPS = [
-    { num: '01', name: 'Citizen Reports', desc: 'One-tap SOS with auto GPS location capture.' },
-    { num: '02', name: 'AI Processing', desc: 'Severity classification and resource allocation AI.' },
-    { num: '03', name: 'Admin Verify', desc: 'Command center confirms and escalates the incident.' },
-    { num: '04', name: 'Dispatch', desc: 'Nearest volunteers dispatched via PostGIS spatial query.' },
-    { num: '05', name: 'Resolved', desc: 'Incident closed, data logged, community notified.' },
+    { num: '01', name: t('home.lifecycle_step1_title'), desc: t('home.lifecycle_step1_desc') },
+    { num: '02', name: t('home.lifecycle_step2_title'), desc: t('home.lifecycle_step2_desc') },
+    { num: '03', name: t('home.lifecycle_step3_title'), desc: t('home.lifecycle_step3_desc') },
+    { num: '04', name: t('home.lifecycle_step4_title'), desc: t('home.lifecycle_step4_desc') },
+    { num: '05', name: t('home.lifecycle_step5_title'), desc: t('home.lifecycle_step5_desc') },
   ];
 
   return (
-    <section style={{ padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', background: 'var(--bg)', overflow: 'hidden' }}>
-      <div style={{ textAlign: 'center', marginBottom: 64 }}>
+    <section 
+      ref={ref}
+      style={{ 
+        padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', 
+        background: 'var(--bg)', 
+        overflow: 'hidden',
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(60px)',
+        transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
+    >
+      <div ref={title.ref} style={{ ...title.style, textAlign: 'center', marginBottom: 64 }}>
         <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(36px, 5vw, 72px)', color: 'var(--text-primary)', margin: 0 }}>
-          the rescue lifecycle
+          {t('home.lifecycle_title')}
         </h2>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 0, overflowX: 'auto', paddingBottom: 16 }}>
         {STEPS.map((step, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', flex: 1, minWidth: 140 }}>
-            <div style={{ flex: 1, paddingRight: i < STEPS.length - 1 ? 24 : 0 }}>
+            <div ref={stepReveals[i].ref} style={{ ...stepReveals[i].style, flex: 1, paddingRight: i < STEPS.length - 1 ? 24 : 0 }}>
               <div style={{ position: 'relative', marginBottom: 20 }}>
                 <span style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 96, color: 'var(--text-dim)', position: 'absolute', top: -24, left: -8, lineHeight: 1, pointerEvents: 'none', userSelect: 'none' }}>{step.num}</span>
                 <h3 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 22, color: 'var(--text-primary)', margin: 0, position: 'relative', paddingTop: 16 }}>{step.name}</h3>
@@ -301,86 +512,155 @@ function HowItWorks() {
 
 /* ── Features Grid ──────────────────────────────── */
 function FeaturesGrid() {
-  const gridRef = useStaggeredReveal(100);
+  const { t } = useTranslation();
+  const { ref, isVisible } = useScrollReveal(0.15);
+  const label = useTextReveal(0.1, 0);
+  const title = useTextReveal(0.1, 0.1);
+  const card1 = useTextReveal(0.1, 0.2);
+  const card2 = useTextReveal(0.1, 0.3);
+  const card3 = useTextReveal(0.1, 0.4);
+  const card4 = useTextReveal(0.1, 0.5);
+  const card5 = useTextReveal(0.1, 0.6);
+  const card6 = useTextReveal(0.1, 0.7);
+  const cardReveals = [card1, card2, card3, card4, card5, card6];
+  
   const FEATURES = [
-    {
-      Icon: RadioTower,
-      code: 'LIVE-05',
-      title: 'Real-Time Monitoring',
-      desc: 'Live data from USGS, IMD, NASA FIRMS - refreshed every 5 minutes.',
-      metric: '5m',
-      tone: 'cyan',
-    },
-    {
-      Icon: BellElectric,
-      code: 'SOS-01',
-      title: 'Sub-Second SOS',
-      desc: 'One tap sends GPS location to NDRF and nearby volunteers instantly.',
-      metric: '<1s',
-      tone: 'red',
-    },
-    {
-      Icon: BrainCircuit,
-      code: 'RISK-ML',
-      title: 'AI Risk Heatmaps',
-      desc: 'XGBoost flood prediction overlays with confidence intervals.',
-      metric: 'AI',
-      tone: 'gold',
-    },
-    {
-      Icon: WifiOff,
-      code: 'OFF-NET',
-      title: 'Offline-First',
-      desc: 'Reports queue without internet, then sync cleanly on reconnect.',
-      metric: '0G',
-      tone: 'green',
-    },
-    {
-      Icon: ShieldCheck,
-      code: 'VOL-5K',
-      title: 'Volunteer Network',
-      desc: 'Verified first responders dispatched within 5km using PostGIS.',
-      metric: '5km',
-      tone: 'cyan',
-    },
-    {
-      Icon: BarChart3,
-      code: 'CMD-24',
-      title: 'Command Center',
-      desc: 'Live incident management, resource allocation, and alert routing.',
-      metric: '24/7',
-      tone: 'red',
-    },
+    { Icon: RadioTower, num: 1, accent: 'cyan' },
+    { Icon: BellElectric, num: 2, accent: 'red' },
+    { Icon: BrainCircuit, num: 3, accent: 'gold' },
+    { Icon: WifiOff, num: 4, accent: 'green' },
+    { Icon: ShieldCheck, num: 5, accent: 'cyan' },
+    { Icon: BarChart3, num: 6, accent: 'red' },
   ];
 
   return (
-    <section style={{ padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', background: 'var(--bg-surface)' }}>
-      <div style={{ margin: '0 auto 48px', textAlign: 'center', maxWidth: 760 }}>
-        <span className="label-caps-gold">[ 002 — FEATURES ]</span>
-        <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(32px, 4vw, 56px)', color: 'var(--text-primary)', margin: '12px 0 0' }}>
-          purpose-built for crisis
-        </h2>
+    <section 
+      ref={ref}
+      style={{ 
+        padding: 'clamp(80px, 12vh, 140px) clamp(24px, 8vw, 96px)', 
+        background: 'var(--bg-surface)',
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(60px)',
+        transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
+    >
+      {/* Header */}
+      <div style={{ maxWidth: 1200, margin: '0 auto 80px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 60, flexWrap: 'wrap' }}>
+          <div style={{ flex: '0 0 auto' }}>
+            <span ref={label.ref} className="label-caps-gold" style={label.style}>[ 003 — {t('home.features_label')} ]</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <h2 ref={title.ref} style={{ 
+              ...title.style,
+              fontFamily: 'Playfair Display', 
+              fontStyle: 'italic', 
+              fontSize: 'clamp(36px, 5vw, 64px)', 
+              color: 'var(--text-primary)', 
+              margin: 0,
+              lineHeight: 1.1
+            }}>
+              {t('home.features_title')}
+            </h2>
+          </div>
+        </div>
       </div>
-      <div
-        ref={gridRef as React.RefObject<HTMLDivElement>}
-        className="features-stack"
-      >
-        {FEATURES.map((f, i) => (
-          <div key={f.code} className={`feature-module feature-module--${f.tone}`}>
-            <span className="feature-module__number" aria-hidden="true">
-              {String(i + 1).padStart(2, '0')}
-            </span>
-            <div className="feature-module__main">
-              <span className="feature-module__code">{f.code}</span>
-              <div className="feature-module__icon">
-                <f.Icon size={25} strokeWidth={1.8} />
-              </div>
-              <div className="feature-module__copy">
-                <h3>{f.title}</h3>
-                <p>{f.desc}</p>
-              </div>
-              <span className="feature-module__metric">{f.metric}</span>
+      
+      {/* Features - Editorial Grid */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1px', background: 'var(--glass-border)', border: '1px solid var(--glass-border)' }}>
+        {FEATURES.map((f, idx) => (
+          <div 
+            key={f.num}
+            ref={cardReveals[idx].ref}
+            style={{
+              ...cardReveals[idx].style,
+              background: 'var(--bg)',
+              padding: '40px 32px',
+              position: 'relative',
+              transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              cursor: 'default'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'var(--bg-surface)';
+              e.currentTarget.style.transform = 'translateY(-4px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'var(--bg)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            {/* Top: Number + Metric */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+              <span style={{
+                fontFamily: 'JetBrains Mono',
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--text-dim)',
+                letterSpacing: '0.1em'
+              }}>
+                {String(f.num).padStart(2, '0')}
+              </span>
+              <span style={{
+                fontFamily: 'JetBrains Mono',
+                fontSize: 13,
+                fontWeight: 700,
+                color: `var(--accent-${f.accent})`,
+                letterSpacing: '0.05em'
+              }}>
+                {t(`home.feature_${f.num}_metric`)}
+              </span>
             </div>
+
+            {/* Icon */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{
+                width: 56,
+                height: 56,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: `1.5px solid var(--accent-${f.accent})`,
+                borderRadius: 8,
+                color: `var(--accent-${f.accent})`
+              }}>
+                <f.Icon size={28} strokeWidth={1.5} />
+              </div>
+            </div>
+            
+            {/* Title */}
+            <h3 style={{
+              fontFamily: 'Playfair Display',
+              fontStyle: 'italic',
+              fontSize: 24,
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              margin: '0 0 12px',
+              lineHeight: 1.2
+            }}>
+              {t(`home.feature_${f.num}_title`)}
+            </h3>
+            
+            {/* Description */}
+            <p style={{
+              fontFamily: 'DM Sans',
+              fontSize: 14,
+              color: 'var(--text-muted)',
+              lineHeight: 1.7,
+              margin: 0
+            }}>
+              {t(`home.feature_${f.num}_desc`)}
+            </p>
+
+            {/* Accent line */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 2,
+              background: `var(--accent-${f.accent})`,
+              opacity: 0.15
+            }} />
           </div>
         ))}
       </div>
@@ -390,10 +670,22 @@ function FeaturesGrid() {
 
 /* ── Data Sources Marquee ───────────────────────── */
 function DataSourcesMarquee() {
+  const { ref, isVisible } = useScrollReveal(0.15);
   const row1 = 'USGS Earthquake API · IMD Weather · NDMA · OpenStreetMap · Supabase Realtime · ISRO Bhuvan · NASA FIRMS';
   const row2 = 'PostGIS · Supabase Edge Functions · GDACS · WHO Alerts · Copernicus Emergency · NRSC · ReliefWeb';
   return (
-    <section style={{ padding: '48px 0', background: 'var(--bg)', overflow: 'hidden', borderTop: '1px solid var(--glass-border)', borderBottom: '1px solid var(--glass-border)' }}>
+    <section 
+      ref={ref}
+      style={{ 
+        padding: '48px 0', 
+        background: 'var(--bg)', 
+        overflow: 'hidden', 
+        borderTop: '1px solid var(--glass-border)', 
+        borderBottom: '1px solid var(--glass-border)',
+        opacity: isVisible ? 1 : 0,
+        transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
+    >
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <span className="label-caps">[ 003 — DATA SOURCES ]</span>
       </div>
@@ -417,16 +709,35 @@ function DataSourcesMarquee() {
 
 /* ── CTA ─────────────────────────────────────────── */
 function StartMissionCTA() {
+  const { ref, isVisible } = useScrollReveal(0.15);
+  const titleReveal = useTextReveal(0.1, 0);
+  const buttonsReveal = useTextReveal(0.1, 0.2);
   const navigate = useNavigate();
   const text = 'start a mission';
   const [hovered, setHovered] = useState(false);
 
   return (
-    <section style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', background: 'var(--bg-surface)', textAlign: 'center' }}>
+    <section 
+      ref={ref}
+      style={{ 
+        minHeight: '60vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        padding: 'clamp(60px, 10vh, 100px) clamp(24px, 8vw, 96px)', 
+        background: 'var(--bg-surface)', 
+        textAlign: 'center',
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(60px)',
+        transition: 'opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
+    >
       <div
+        ref={titleReveal.ref}
+        style={titleReveal.style}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        style={{ cursor: 'none' }}
       >
         <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(44px, 8vw, 110px)', color: 'var(--text-primary)', margin: '0 0 32px', lineHeight: 1.1 }}>
           {text.split('').map((char, i) => (
@@ -443,7 +754,7 @@ function StartMissionCTA() {
           ))}
         </h2>
       </div>
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div ref={buttonsReveal.ref} style={{ ...buttonsReveal.style, display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
         <button className="btn-sos" onClick={() => navigate('/sos')} data-cursor="sos" style={{ fontSize: 16, padding: '16px 48px' }}>
           🚨 Send Emergency SOS
         </button>
@@ -451,9 +762,6 @@ function StartMissionCTA() {
           Create Account →
         </button>
       </div>
-      <p style={{ marginTop: 48, fontFamily: 'DM Sans', fontSize: 13, color: 'var(--text-dim)' }}>
-        ResQ AI • By Antigravity AI Team • India 🇮🇳
-      </p>
     </section>
   );
 }

@@ -1,0 +1,71 @@
+{
+  "nav": {
+    "map": "Disaster Map",
+    "volunteer": "Volunteer"
+  },
+  "home": {
+    "hero_label": "INDIA KA EMERGENCY RESPONSE PLATFORM",
+    "hero_when": "jab",
+    "hero_seconds": "seconds",
+    "hero_matter": "matter karte hain,",
+    "hero_data": "data",
+    "hero_saves": "jaan bachata hai",
+    "hero_subtitle": "Ek mazboot India ke liye AI-powered disaster coordination platform. Real-time. Har jagah. Hamesha.",
+    "cta_sos": "🚨 SOS Bhejo",
+    "cta_map": "Live Map Dekho →",
+    
+    "mission_label": "MISSION",
+    "mission_text": "ResQ AI ek vishwas par bana hai: disaster ki chaos mein, sahi waqt par sahi jaankari jaan bachati hai. Hum satellite data, AI prediction, aur human networks ko combine karke India ka sabse responsive emergency coordination platform banate hain.",
+    
+    "platform_label": "PLATFORM",
+    "platform_title": "Real-time. Har jagah. Hamesha.",
+    "platform_live_map": "Live Map",
+    "platform_sos_engine": "SOS Engine",
+    "platform_volunteers": "Volunteers",
+    
+    "features_label": "FEATURES",
+    "features_title": "crisis ke liye specially banaya gaya",
+    
+    "feature_1_code": "LIVE-05",
+    "feature_1_title": "Real-Time Monitoring",
+    "feature_1_desc": "USGS, IMD, NASA FIRMS se live data - har 5 minute mein refresh hota hai.",
+    "feature_1_metric": "5m",
+    
+    "feature_2_code": "SOS-01",
+    "feature_2_title": "Sub-Second SOS",
+    "feature_2_desc": "Ek tap se GPS location NDRF aur paas ke volunteers ko turant bhej do.",
+    "feature_2_metric": "<1s",
+    
+    "feature_3_code": "RISK-ML",
+    "feature_3_title": "AI Risk Heatmaps",
+    "feature_3_desc": "Confidence intervals ke saath XGBoost flood prediction overlays milte hain.",
+    "feature_3_metric": "AI",
+    
+    "feature_4_code": "OFF-NET",
+    "feature_4_title": "Offline-First",
+    "feature_4_desc": "Bina internet ke reports queue mein jaati hain, phir reconnect hone par sync ho jaati hain.",
+    "feature_4_metric": "0G",
+    
+    "feature_5_code": "VOL-5K",
+    "feature_5_title": "Volunteer Network",
+    "feature_5_desc": "PostGIS use karke 5km ke andar verified first responders dispatch kiye jaate hain.",
+    "feature_5_metric": "5km",
+    
+    "feature_6_code": "CMD-24",
+    "feature_6_title": "Command Center",
+    "feature_6_desc": "Live incident management, resource allocation, aur alert routing 24/7 chalta hai.",
+    "feature_6_metric": "24/7",
+    
+    "lifecycle_title": "rescue lifecycle",
+    "lifecycle_step1_title": "Citizen Reports",
+    "lifecycle_step1_desc": "Auto GPS location capture ke saath one-tap SOS.",
+    "lifecycle_step2_title": "AI Processing",
+    "lifecycle_step2_desc": "Severity classification aur resource allocation AI.",
+    "lifecycle_step3_title": "Admin Verify",
+    "lifecycle_step3_desc": "Command center incident ko confirm aur escalate karta hai.",
+    "lifecycle_step4_title": "Dispatch",
+    "lifecycle_step4_desc": "PostGIS spatial query ke through sabse paas ke volunteers bheje jaate hain.",
+    "lifecycle_step5_title": "Resolved",
+    "lifecycle_step5_desc": "Incident band, data log kiya gaya, community ko notify kiya gaya."
+  }
+}

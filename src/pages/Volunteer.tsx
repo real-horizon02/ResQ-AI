@@ -117,7 +117,6 @@ export default function VolunteerMap() {
       }
     });
     
-    m.addTo(cg); // Add to map instead of vice versa (wait, it's cg.addTo(m) wait no, m.addLayer(cg))
     m.addLayer(cg);
     
     mapInstance.current = m;
