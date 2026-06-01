@@ -26,10 +26,15 @@ export function Navbar() {
   const sosStart = useRef<number | null>(null);
   const sosFired = useRef(false);
 
-  const NAV_LINKS = [
-    { label: t('nav.map'), href: '/map' },
-    { label: t('nav.volunteer'), href: '/volunteer' },
-  ];
+  const isVolunteer = profile?.role === 'volunteer';
+
+  // Role-based nav links
+  const NAV_LINKS = isVolunteer
+    ? [{ label: 'Dashboard', href: '/volunteer' }]
+    : [
+        { label: t('nav.map'), href: '/map' },
+        { label: 'Volunteer', href: '/volunteer-onboarding' },
+      ];
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 24);

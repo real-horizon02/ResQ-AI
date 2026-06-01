@@ -329,8 +329,15 @@ function IncidentPanel({ inc, onClose, onDispatch }: { inc: Incident; onClose: (
 // ── Map Page ──────────────────────────────────────────────────────────────────
 export default function MapPage() {
   const { incidents, volunteers } = useAppStore();
-  const { isAdmin } = useAuthStore();
+  const { isAdmin, profile, initialized } = useAuthStore();
   const navigate = useNavigate();
+
+  // Volunteers have their own dashboard — redirect them away from citizen map
+  useEffect(() => {
+    if (initialized && profile?.role === 'volunteer') {
+      navigate('/volunteer', { replace: true });
+    }
+  }, [initialized, profile, navigate]);
 
   const mapDivRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<L.Map | null>(null);

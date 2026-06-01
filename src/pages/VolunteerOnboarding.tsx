@@ -224,10 +224,46 @@ function LocationModal({ onAllow, onDeny }: { onAllow: () => void; onDeny: () =>
   );
 }
 
+const OAUTH_PROVIDERS = [
+  { id: 'google' as const, label: 'Google', color: '#4285F4', cursorLabel: 'GOOGLE', icon: (
+    <svg viewBox="0 0 24 24" width="18" height="18">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  )},
+  { id: 'facebook' as const, label: 'Facebook', color: '#1877F2', cursorLabel: 'FACEBOOK', icon: (
+    <svg viewBox="0 0 24 24" width="18" height="18">
+      <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+    </svg>
+  )}
+];
+
+function OAuthButton({ provider, onClick, loading }: { provider: typeof OAUTH_PROVIDERS[0]; onClick: () => void; loading: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={`hover-flash-${provider.id}`}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+        padding: '13px 20px', borderRadius: 12, width: '100%',
+        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+        color: '#F1F5F9', fontFamily: 'DM Sans', fontWeight: 500, fontSize: 14,
+        cursor: 'pointer', transition: 'all 0.4s ease', opacity: loading ? 0.6 : 1,
+      }}
+    >
+      {provider.icon}
+      Continue with {provider.label}
+    </button>
+  );
+}
+
 /* ── Main Page ──────────────────────────────────────────────────── */
 export default function VolunteerOnboarding() {
   const navigate = useNavigate();
-  const { profile, updateProfile, signUp, isLoggedIn } = useAuthStore();
+  const { profile, updateProfile, signUp, signInWithOAuth, isLoggedIn } = useAuthStore();
 
   // Form fields
   const [email, setEmail]           = useState('');
@@ -247,6 +283,7 @@ export default function VolunteerOnboarding() {
 
   // UI
   const [loading, setLoading]               = useState(false);
+  const [oauthLoading, setOauthLoading]     = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errors, setErrors]                 = useState<Record<string, string>>({});
 
@@ -308,6 +345,17 @@ export default function VolunteerOnboarding() {
     setLocationError('Location access denied. It is required to register as a volunteer.');
   };
 
+  const handleOAuth = async (provider: 'google' | 'facebook' | 'twitter' | 'apple') => {
+    setOauthLoading(provider);
+    try {
+      localStorage.setItem('pending_signup_role', 'volunteer');
+      await signInWithOAuth(provider);
+    } catch (err: any) {
+      message.error(err.message || `${provider} login failed.`);
+      setOauthLoading(null);
+    }
+  };
+
   /* ── Validation ─────────────────────────────────────────────── */
   const validate = () => {
     const e: Record<string, string> = {};
@@ -356,11 +404,14 @@ export default function VolunteerOnboarding() {
       const cityVal  = addressParts.slice(0, 3).join(', ') || fullAddress;
       const stateVal = addressParts.slice(-2, -1)[0] || null;
 
+      let parsedAge: number | null = parseInt(age, 10);
+      if (isNaN(parsedAge)) parsedAge = null;
+
       try {
         await updateProfile({
           full_name:      fullName.trim(),
           phone_number:   phone.trim(),
-          age:            Number(age),
+          age:            parsedAge,
           skills,
           role:           'volunteer',
           is_volunteer:   true,
@@ -371,12 +422,10 @@ export default function VolunteerOnboarding() {
           state:          stateVal,
         }, userId);
       } catch (profileErr: any) {
-        // Profile save failed (most likely email confirmation is ON → no session).
-        // We still navigate the user forward — the data can be saved later.
         console.warn('Profile save failed:', profileErr.message);
         message.warning({
-          content: 'Account created! Profile data will sync once you confirm your email.',
-          duration: 6,
+          content: 'Account created, but some profile details failed to save. You can update them in your dashboard.',
+          duration: 4,
           style: { fontFamily: 'DM Sans' },
         });
       }
@@ -399,6 +448,148 @@ export default function VolunteerOnboarding() {
     </div>
   );
 
+  const renderVolunteerFields = () => (
+    <>
+      <FieldInput label="Full Name" icon={User} placeholder="e.g. Rahul Sharma" value={fullName} onChange={setFullName} error={errors.fullName} required />
+
+      <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <FieldInput label="Phone Number" icon={Phone} type="tel" placeholder="+91 98765 43210" value={phone} onChange={setPhone} error={errors.phone} required />
+        </div>
+        <div style={{ width: 130 }}>
+          <FieldInput label="Age" icon={Calendar} type="number" placeholder="18+" value={age} onChange={setAge} error={errors.age} required />
+        </div>
+      </div>
+
+      {/* ── Skills ─────────────────────────────────── */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13,
+          color: '#94A3B8', marginBottom: 8, letterSpacing: '0.04em', textTransform: 'uppercase',
+        }}>
+          <Zap size={13} /> Skills <span style={{ color: '#EF4444' }}> *</span>
+        </label>
+        <Select
+          mode="tags"
+          placeholder="Select or type your skills"
+          value={skills}
+          onChange={setSkills}
+          style={{ width: '100%' }}
+          tokenSeparators={[',']}
+          styles={{ popup: { root: { background: '#0D1525', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 } } }}
+        >
+          {SKILLS_OPTIONS.map(s => (
+            <Option key={s} value={s} style={{ fontFamily: 'DM Sans', color: '#CBD5E1' }}>{s}</Option>
+          ))}
+        </Select>
+        {errors.skills && <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#EF4444', margin: '6px 0 0' }}>⚠ {errors.skills}</p>}
+      </div>
+
+      {/* ── Location ───────────────────────────────── */}
+      {sectionDivider('Location')}
+      <div style={{ marginBottom: 32 }}>
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13,
+          color: '#94A3B8', marginBottom: 12, letterSpacing: '0.04em', textTransform: 'uppercase',
+        }}>
+          <MapPin size={13} /> Your Location <span style={{ color: '#EF4444' }}>*</span>
+        </label>
+
+        {!coords ? (
+          <div style={{
+            border: `1.5px dashed ${errors.location ? '#EF4444' : 'rgba(255,255,255,0.09)'}`,
+            borderRadius: 12, padding: '28px 20px', textAlign: 'center',
+            background: 'rgba(255,255,255,0.02)',
+          }}>
+            <MapPin size={32} color="#1E3A4A" style={{ marginBottom: 12 }} />
+            <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: '#475569', marginBottom: 20, lineHeight: 1.65 }}>
+              Share your current location so we can<br />assign you to nearby rescue missions.
+            </p>
+            <button
+              type="button"
+              onClick={handleGetLocation}
+              disabled={locationLoading}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '12px 28px', borderRadius: 99,
+                background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)',
+                color: '#00D4FF', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 14,
+                cursor: locationLoading ? 'not-allowed' : 'pointer',
+                opacity: locationLoading ? 0.65 : 1, transition: 'all 0.2s ease',
+              }}
+            >
+              {locationLoading
+                ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Detecting...</>
+                : <><MapPin size={16} /> Enable My Location</>
+              }
+            </button>
+            {(errors.location || locationError) && (
+              <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#F97316', marginTop: 12 }}>
+                ⚠ {errors.location || locationError}
+              </p>
+            )}
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+            style={{
+              padding: '18px 20px', borderRadius: 12,
+              background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <CheckCircle size={18} color="#22C55E" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 13, color: '#22C55E', marginBottom: 5 }}>
+                  ✓ Location Captured
+                </div>
+                <div style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>
+                  {fullAddress}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setCoords(null); setFullAddress(''); setLocationError(''); }}
+                style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontFamily: 'DM Sans', fontSize: 12, flexShrink: 0, paddingTop: 2 }}
+              >
+                Change
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* ── Submit ─────────────────────────────────── */}
+      <button
+        type="submit"
+        disabled={loading}
+        style={{
+          width: '100%', height: 54, borderRadius: 27,
+          background: loading ? 'rgba(0,212,255,0.4)' : 'linear-gradient(135deg, #00D4FF 0%, #00A3CC 100%)',
+          border: 'none', color: '#060910',
+          fontFamily: 'DM Sans', fontWeight: 800, fontSize: 16,
+          cursor: loading ? 'not-allowed' : 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          boxShadow: loading ? 'none' : '0 8px 32px rgba(0,212,255,0.22)',
+          transition: 'all 0.3s ease', letterSpacing: '0.02em',
+        }}
+      >
+        {loading
+          ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Registering...</>
+          : <>Register as Volunteer <ArrowRight size={18} /></>
+        }
+      </button>
+    </>
+  );
+
   return (
     <div style={{ minHeight: '100vh', background: '#060910', paddingTop: 80, paddingBottom: 80 }}>
 
@@ -411,207 +602,110 @@ export default function VolunteerOnboarding() {
       }} />
 
       <div style={{ maxWidth: 620, margin: '0 auto', padding: '0 24px', position: 'relative', zIndex: 1 }}>
-        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
-
-          {/* ── Header ────────────────────────────────────────── */}
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        
+        {/* If the user is logged in (via OAuth), show the popup form */}
+        {isLoggedIn ? (
+          <AnimatePresence>
             <motion.div
-              initial={{ scale: 0 }} animate={{ scale: 1 }}
-              transition={{ delay: 0.1, type: 'spring', stiffness: 220 }}
-              style={{
-                width: 68, height: 68, borderRadius: '50%',
-                background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{ 
+                position: 'fixed', inset: 0, zIndex: 1000, 
+                background: 'rgba(4,6,12,0.9)', backdropFilter: 'blur(10px)',
+                overflowY: 'auto'
               }}
+              data-lenis-prevent="true"
             >
-              <Zap size={30} color="#00D4FF" />
-            </motion.div>
-            <div style={{
-              display: 'inline-block', padding: '4px 16px', borderRadius: 99,
-              background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)',
-              fontFamily: 'DM Sans', fontSize: 11, fontWeight: 700,
-              color: '#00D4FF', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16,
-            }}>
-              Volunteer Registration
-            </div>
-            <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 42, color: '#F1F5F9', margin: '0 0 14px', lineHeight: 1.1 }}>
-              Join the Rescue Team
-            </h1>
-            <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: '#475569', maxWidth: 420, margin: '0 auto' }}>
-              Complete your profile below. Your details will be verified by our admin team before you gain full access.
-            </p>
-          </div>
-
-          {/* ── Form Card ──────────────────────────────────────── */}
-          <div style={{
-            background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 20, padding: '40px 36px',
-            boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
-          }}>
-            <form onSubmit={handleSubmit} noValidate>
-
-              {/* ── Account Details ─────────────────────────── */}
-              {!isLoggedIn && (
-                <>
-                  {sectionDivider('Account Details')}
-                  <FieldInput label="Email Address" icon={Mail} type="email" placeholder="you@example.com" value={email} onChange={setEmail} error={errors.email} required />
-                  <PasswordInput label="Create Password" placeholder="Minimum 6 characters" value={password} onChange={setPassword} error={errors.password} required />
-                  <PasswordInput label="Confirm Password" placeholder="Re-enter your password" value={confirmPass} onChange={setConfirmPass} error={errors.confirmPass} required />
-                </>
-              )}
-
-              {/* ── Volunteer Profile ───────────────────────── */}
-              {sectionDivider('Volunteer Profile')}
-              <FieldInput label="Full Name" icon={User} placeholder="e.g. Rahul Sharma" value={fullName} onChange={setFullName} error={errors.fullName} required />
-
-              <div style={{ display: 'flex', gap: 16 }}>
-                <div style={{ flex: 1 }}>
-                  <FieldInput label="Phone Number" icon={Phone} type="tel" placeholder="+91 98765 43210" value={phone} onChange={setPhone} error={errors.phone} required />
-                </div>
-                <div style={{ width: 130 }}>
-                  <FieldInput label="Age" icon={Calendar} type="number" placeholder="18+" value={age} onChange={setAge} error={errors.age} required />
-                </div>
-              </div>
-
-              {/* ── Skills ─────────────────────────────────── */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13,
-                  color: '#94A3B8', marginBottom: 8, letterSpacing: '0.04em', textTransform: 'uppercase',
-                }}>
-                  <Zap size={13} /> Skills <span style={{ color: '#EF4444' }}> *</span>
-                </label>
-                <Select
-                  mode="tags"
-                  placeholder="Select or type your skills"
-                  value={skills}
-                  onChange={setSkills}
-                  style={{ width: '100%' }}
-                  tokenSeparators={[',']}
-                  styles={{ popup: { root: { background: '#0D1525', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 } } }}
+              <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
+                <motion.div
+                  initial={{ scale: 0.88, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+                  style={{
+                    background: '#0D1525', padding: '40px 36px',
+                    maxWidth: 600, width: '100%',
+                    borderRadius: 20, boxShadow: '0 32px 80px rgba(0,0,0,0.7)',
+                    border: '1px solid rgba(0,212,255,0.18)'
+                  }}
                 >
-                  {SKILLS_OPTIONS.map(s => (
-                    <Option key={s} value={s} style={{ fontFamily: 'DM Sans', color: '#CBD5E1' }}>{s}</Option>
-                  ))}
-                </Select>
-                {errors.skills && <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#EF4444', margin: '6px 0 0' }}>⚠ {errors.skills}</p>}
+                <div style={{ textAlign: 'center', marginBottom: 30 }}>
+                  <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 32, color: '#F1F5F9', margin: '0 0 10px' }}>
+                    some more details
+                  </h2>
+                  <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: '#94A3B8' }}>
+                    Please complete your volunteer profile to continue.
+                  </p>
+                </div>
+                
+                <form onSubmit={handleSubmit} noValidate>
+                  {renderVolunteerFields()}
+                </form>
+              </motion.div>
               </div>
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
 
-              {/* ── Location ───────────────────────────────── */}
-              {sectionDivider('Location')}
-              <div style={{ marginBottom: 32 }}>
-                <label style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13,
-                  color: '#94A3B8', marginBottom: 12, letterSpacing: '0.04em', textTransform: 'uppercase',
-                }}>
-                  <MapPin size={13} /> Your Location <span style={{ color: '#EF4444' }}>*</span>
-                </label>
-
-                {!coords ? (
-                  <div style={{
-                    border: `1.5px dashed ${errors.location ? '#EF4444' : 'rgba(255,255,255,0.09)'}`,
-                    borderRadius: 12, padding: '28px 20px', textAlign: 'center',
-                    background: 'rgba(255,255,255,0.02)',
-                  }}>
-                    <MapPin size={32} color="#1E3A4A" style={{ marginBottom: 12 }} />
-                    <p style={{ fontFamily: 'DM Sans', fontSize: 14, color: '#475569', marginBottom: 20, lineHeight: 1.65 }}>
-                      Share your current location so we can<br />assign you to nearby rescue missions.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleGetLocation}
-                      disabled={locationLoading}
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        padding: '12px 28px', borderRadius: 99,
-                        background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)',
-                        color: '#00D4FF', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 14,
-                        cursor: locationLoading ? 'not-allowed' : 'pointer',
-                        opacity: locationLoading ? 0.65 : 1, transition: 'all 0.2s ease',
-                      }}
-                    >
-                      {locationLoading
-                        ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Detecting...</>
-                        : <><MapPin size={16} /> Enable My Location</>
-                      }
-                    </button>
-                    {(errors.location || locationError) && (
-                      <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: '#F97316', marginTop: 12 }}>
-                        ⚠ {errors.location || locationError}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
-                    style={{
-                      padding: '18px 20px', borderRadius: 12,
-                      background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.2)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                        background: 'rgba(0,230,118,0.12)', border: '1px solid rgba(0,230,118,0.25)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <CheckCircle size={18} color="#22C55E" />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 13, color: '#22C55E', marginBottom: 5 }}>
-                          ✓ Location Captured
-                        </div>
-                        <div style={{ fontFamily: 'DM Sans', fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>
-                          {fullAddress}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { setCoords(null); setFullAddress(''); setLocationError(''); }}
-                        style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontFamily: 'DM Sans', fontSize: 12, flexShrink: 0, paddingTop: 2 }}
-                      >
-                        Change
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* ── Submit ─────────────────────────────────── */}
-              <button
-                type="submit"
-                disabled={loading}
+            {/* ── Header ────────────────────────────────────────── */}
+            <div style={{ textAlign: 'center', marginBottom: 48 }}>
+              <motion.div
+                initial={{ scale: 0 }} animate={{ scale: 1 }}
+                transition={{ delay: 0.1, type: 'spring', stiffness: 220 }}
                 style={{
-                  width: '100%', height: 54, borderRadius: 27,
-                  background: loading ? 'rgba(0,212,255,0.4)' : 'linear-gradient(135deg, #00D4FF 0%, #00A3CC 100%)',
-                  border: 'none', color: '#060910',
-                  fontFamily: 'DM Sans', fontWeight: 800, fontSize: 16,
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  boxShadow: loading ? 'none' : '0 8px 32px rgba(0,212,255,0.22)',
-                  transition: 'all 0.3s ease', letterSpacing: '0.02em',
+                  width: 68, height: 68, borderRadius: '50%',
+                  background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
                 }}
               >
-                {loading
-                  ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Registering...</>
-                  : <>Register as Volunteer <ArrowRight size={18} /></>
-                }
-              </button>
-
-              <div style={{ textAlign: 'center', marginTop: 20 }}>
-                <button
-                  type="button"
-                  onClick={() => navigate('/auth')}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans', fontSize: 13, color: '#334155' }}
-                >
-                  ← Back to sign in
-                </button>
+                <Zap size={30} color="#00D4FF" />
+              </motion.div>
+              <div style={{
+                display: 'inline-block', padding: '4px 16px', borderRadius: 99,
+                background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.15)',
+                fontFamily: 'DM Sans', fontSize: 11, fontWeight: 700,
+                color: '#00D4FF', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 16,
+              }}>
+                Volunteer Registration
               </div>
-            </form>
-          </div>
-        </motion.div>
+              <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 42, color: '#F1F5F9', margin: '0 0 14px', lineHeight: 1.1 }}>
+                Join the Rescue Team
+              </h1>
+              <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: '#475569', maxWidth: 420, margin: '0 auto' }}>
+                Complete your profile below. Your details will be verified by our admin team before you gain full access.
+              </p>
+            </div>
+
+            {/* ── Form Card ──────────────────────────────────────── */}
+            <div style={{
+              background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 20, padding: '40px 36px',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.45)',
+            }}>
+              <form onSubmit={handleSubmit} noValidate>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                  {OAUTH_PROVIDERS.map(p => (
+                    <OAuthButton
+                      key={p.id}
+                      provider={p}
+                      onClick={() => handleOAuth(p.id as any)}
+                      loading={oauthLoading === p.id}
+                    />
+                  ))}
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: 20 }}>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/auth')}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'DM Sans', fontSize: 13, color: '#334155' }}
+                  >
+                    ← Back to sign in
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* ── Dark Location Permission Modal ─────────────────── */}

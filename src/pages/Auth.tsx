@@ -21,12 +21,7 @@ const OAUTH_PROVIDERS = [
     <svg viewBox="0 0 24 24" width="18" height="18">
       <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
     </svg>
-  )},
-  { id: 'twitter' as const, label: 'X (Twitter)', color: '#000000', cursorLabel: 'X / TWITTER', icon: (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-    </svg>
-  )},
+  )}
 ];
 
 function OAuthButton({ provider, onClick, loading }: { provider: typeof OAUTH_PROVIDERS[0]; onClick: () => void; loading: boolean }) {
@@ -136,18 +131,53 @@ function AuthForm({ mode, onSwitch, redirectPath }: { mode: Mode; onSwitch: () =
       )}
 
       {mode === 'signup' && signupStep === 1 ? (
-        <RoleSelection
-          onContinue={(selectedRole) => {
-            if (selectedRole === 'volunteer') {
-              localStorage.setItem('pending_signup_role', 'volunteer');
-              navigate('/volunteer-onboarding');
-            } else {
-              setRole(selectedRole);
-              setSignupStep(2);
-            }
-          }}
-          onSwitch={onSwitch}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Header */}
+          <div>
+            <span className="label-caps-gold" style={{ display: 'block', marginBottom: 12 }}>
+              [ CREATE ACCOUNT ]
+            </span>
+            <h2 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 48, color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>
+              Join ResQ AI
+            </h2>
+            <p style={{ fontFamily: 'DM Sans', fontSize: 15, color: 'var(--text-muted)', margin: '12px 0 0' }}>
+              Citizens can join instantly with Google or Facebook.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {OAUTH_PROVIDERS.map(p => (
+              <OAuthButton
+                key={p.id}
+                provider={p}
+                onClick={() => {
+                  setRole('citizen');
+                  handleOAuth(p.id as 'google' | 'facebook' | 'twitter' | 'apple');
+                }}
+                loading={oauthLoading === p.id}
+              />
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+            <span style={{ fontFamily: 'DM Sans', fontSize: 12, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>OR APPLY FOR A ROLE</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+          </div>
+
+          <RoleSelection
+            onContinue={(selectedRole) => {
+              if (selectedRole === 'volunteer') {
+                localStorage.setItem('pending_signup_role', 'volunteer');
+                navigate('/volunteer-onboarding');
+              } else {
+                setRole(selectedRole);
+                setSignupStep(2);
+              }
+            }}
+            onSwitch={onSwitch}
+          />
+        </div>
       ) : (
         <>
           {/* OAuth Buttons */}

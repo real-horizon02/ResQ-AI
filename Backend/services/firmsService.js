@@ -2,6 +2,8 @@ import axios from "axios";
 import { parseCSV } from "../utils/csvParser.js";
 import dotenv from "dotenv";
 import { isLocationInIndia } from "../utils/geoUtils.js";
+import { fetchWithRetry } from "../utils/apiRetry.js";
+import { mockDisasterData } from "../data/mockDisasters.js";
 
 const INDIA_AREA = "68,6,97,37";
 
@@ -14,9 +16,12 @@ const FIRMS_URL = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${MAP_KEY}/
 
 export const getFireData = async () => {
   try {
-    const response = await axios.get(FIRMS_URL);
-    const csvData = response.data;
+    const response = await fetchWithRetry(FIRMS_URL, {
+      maxRetries: 2,
+      baseDelay: 500,
+    });
 
+    const csvData = response.data;
     const parsed = parseCSV(csvData);
 
     // Filter using centralised isLocationInIndia
@@ -27,15 +32,13 @@ export const getFireData = async () => {
       return isLocationInIndia(latNum, lngNum);
     });
 
-    console.log(`[FIRMS] Found ${filteredFires.length} India fires in the last 24 hours.`);
-
-    return filteredFires.map((fire) => {
+    const mapped = filteredFires.map((fire) => {
       let confNum = 50;
       if (fire.confidence) {
         const confStr = fire.confidence.toLowerCase().trim();
-        if (confStr === 'h') confNum = 85;      // High -> 85 (High severity)
-        else if (confStr === 'n') confNum = 60; // Nominal -> 60 (Medium severity)
-        else if (confStr === 'l') confNum = 30; // Low -> 30 (Low severity)
+        if (confStr === 'h') confNum = 85;
+        else if (confStr === 'n') confNum = 60;
+        else if (confStr === 'l') confNum = 30;
         else {
           const parsedConf = Number(confStr);
           if (!isNaN(parsedConf)) confNum = parsedConf;
@@ -65,8 +68,17 @@ export const getFireData = async () => {
         peopleAffected: 0,
       };
     });
+
+    if (mapped.length > 0) {
+      console.log(`[FIRMS] Found ${mapped.length} India fires in the last 24 hours.`);
+    } else {
+      console.log(`[FIRMS] No fires detected in India currently. Using mock data for display.`);
+      return mockDisasterData.fires;
+    }
+
+    return mapped;
   } catch (err) {
-    console.error("[FIRMS] Error fetching fire data:", err.message);
-    return [];
+    console.warn(`[FIRMS] API failed (${err.message}). Using mock fire data.`);
+    return mockDisasterData.fires;
   }
 };

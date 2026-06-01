@@ -15,6 +15,16 @@ interface AdminRequest {
   profiles: { full_name: string | null; email: string | null; role: string } | null;
 }
 
+interface RescueApp {
+  id: string;
+  volunteerId: string;
+  incidentId: string;
+  status: string;
+  details: { name: string; phone: string; city: string };
+  createdAt: string;
+}
+
+
 const SEV_COLORS: Record<string, string> = {
   critical: 'var(--accent-red)', high: 'var(--accent-orange)', medium: '#F59E0B', low: 'var(--text-muted)', resolved: 'var(--accent-green)',
 };
@@ -66,9 +76,11 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([]);
+  const [rescueApps, setRescueApps] = useState<RescueApp[]>([]);
   const [processingReq, setProcessingReq] = useState<string | null>(null);
 
   // Fetch pending admin requests
+
   useEffect(() => {
     const fetchRequests = async () => {
       const { data } = await supabase
@@ -97,6 +109,33 @@ export default function AdminPage() {
       fetchDisasters();
     }
   }, []);
+
+  // Fetch rescue applications
+  useEffect(() => {
+    async function fetchApps() {
+      try {
+        const res = await fetch("http://localhost:5000/api/rescue-applications");
+        const data = await res.json();
+        setRescueApps(data);
+      } catch (err) {}
+    }
+    fetchApps();
+    const t = setInterval(fetchApps, 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  const handleRescueApp = async (appId: string, status: 'approved' | 'rejected') => {
+    setProcessingReq(appId);
+    try {
+      await fetch(`http://localhost:5000/api/rescue-applications/${appId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      setRescueApps(r => r.map(x => x.id === appId ? { ...x, status } : x));
+    } catch {}
+    setProcessingReq(null);
+  };
 
   const handleApproval = async (reqId: string, userId: string, approve: boolean) => {
     setProcessingReq(reqId);
@@ -256,6 +295,54 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* Rescue Applications */}
+        {rescueApps.filter(a => a.status === 'pending').length > 0 && (
+          <div style={{ marginTop: 32 }}>
+            <div className="glass-card-elevated" style={{ overflow: 'hidden' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="label-caps">Rescue Mission Applications</span>
+                <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, padding: '3px 10px', borderRadius: 999, background: 'rgba(0,212,255,0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(0,212,255,0.2)' }}>{rescueApps.filter(a => a.status === 'pending').length} pending</span>
+              </div>
+              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {rescueApps.filter(a => a.status === 'pending').map(app => {
+                  const inc = incidents.find(i => i.id === app.incidentId);
+                  return (
+                    <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: 12, gap: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--accent-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 14, color: 'var(--bg)' }}>
+                            {app.details?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'V'}
+                          </span>
+                        </div>
+                        <div>
+                          <p style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{app.details?.name || 'Volunteer'} <span style={{ fontFamily: 'DM Sans', fontSize: 12, color: 'var(--text-muted)' }}>wants to join</span></p>
+                          <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>Incident: {inc ? `${inc.title.split('—')[0].trim()} (${inc.state})` : app.incidentId}</p>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                        <button
+                          onClick={() => handleRescueApp(app.id, 'approved')}
+                          disabled={processingReq === app.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(0,230,118,0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                        >
+                          <Check size={14} /> Approve Dispatch
+                        </button>
+                        <button
+                          onClick={() => handleRescueApp(app.id, 'rejected')}
+                          disabled={processingReq === app.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(255,45,45,0.08)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                        >
+                          <X size={14} /> Reject
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Admin Approval Queue */}
         {adminRequests.length > 0 && (
