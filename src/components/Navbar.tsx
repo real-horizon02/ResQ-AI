@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
 import { Logo } from './ui/Logo';
 import { LanguageSwitcher } from './ui/LanguageSwitcher';
+import { ThemeToggle } from './ui/ThemeToggle';
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -63,9 +64,26 @@ export function Navbar() {
         </div>
       </Link>
 
-      {/* Right side - Language + Auth */}
+      {/* Right side - Language + Theme + Auth */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        {isAdmin && (
+          <button
+            onClick={() => navigate('/admin')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'rgba(200,169,110,0.1)', border: '1px solid rgba(200,169,110,0.3)',
+              borderRadius: 999, padding: '6px 16px', cursor: 'pointer',
+              color: 'var(--accent-gold)', fontFamily: 'DM Sans', fontSize: 13, fontWeight: 600,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(200,169,110,0.2)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(200,169,110,0.1)'}
+          >
+            <Shield size={14} /> Command Center
+          </button>
+        )}
         <LanguageSwitcher variant="ghost" />
+        <ThemeToggle />
 
         {/* Auth area */}
         {user ? (
@@ -150,14 +168,7 @@ export function Navbar() {
                       onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                       <User size={14} style={{ color: 'var(--accent-cyan)' }} /> Edit Profile
                     </button>
-                    {isAdmin && (
-                      <button onClick={() => { navigate('/admin'); setDropdownOpen(false); }}
-                        style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-primary)', fontFamily: 'DM Sans', fontSize: 13, textAlign: 'left', transition: 'background 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--glass)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                        <Shield size={14} style={{ color: 'var(--accent-gold)' }} /> Command Center
-                      </button>
-                    )}
+                    {/* Admin button moved to navbar */}
                     <div style={{ height: 1, background: 'var(--glass-border)', margin: '6px 0' }} />
                     <button onClick={handleSignOut}
                       style={{ width: '100%', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, color: 'var(--accent-red)', fontFamily: 'DM Sans', fontSize: 13, textAlign: 'left', transition: 'background 0.15s' }}

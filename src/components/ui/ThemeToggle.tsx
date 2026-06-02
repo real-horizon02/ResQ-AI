@@ -26,18 +26,18 @@ export function ThemeToggle() {
         width: 48,
         height: 48,
         borderRadius: '50%',
-        background: 'var(--bg-surface)',
+        background: 'rgba(255, 255, 255, 0.05)',
         border: '1px solid var(--glass-border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: 'none',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        cursor: 'pointer',
         color: 'var(--text-primary)',
-        transition: 'all 0.3s ease',
+        transition: 'all 0.2s ease',
+        flexShrink: 0
       }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
     >
       <AnimatePresence mode="wait">
         {theme === 'dark' ? (

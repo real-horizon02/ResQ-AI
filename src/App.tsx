@@ -13,8 +13,8 @@ import { FloatingSOS } from './components/ui/FloatingSOS';
 import { OfflineBanner } from './components/ui/OfflineBanner';
 import { AdminGuard } from './components/AdminGuard';
 import { useAuthStore } from './store/useAuthStore';
-import { ThemeToggle } from './components/ui/ThemeToggle';
 import { CinematicLoader } from './components/CinematicLoader';
+import { ThemeToggle } from './components/ui/ThemeToggle';
 import Home from './pages/Home';
 import MapPage from './pages/Map';
 import SOSPage from './pages/SOS';
@@ -37,10 +37,10 @@ function Layout() {
   return (
     <>
       <CustomCursor />
-      <ThemeToggle />
       <OfflineBanner />
       <FloatingSOS />
       <ToastContainer />
+      <ThemeToggle />
       <PageTransition>
         <Outlet />
       </PageTransition>

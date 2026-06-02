@@ -1,394 +1,471 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Check, X } from 'lucide-react';
-import { Navbar } from '../components/Navbar';
-import { useAppStore } from '../store/useAppStore';
-import { useAuthStore } from '../store/useAuthStore';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ACTIVITY_FEED_TEMPLATES, TYPE_EMOJIS } from '../data/mockData';
+import { useAuthStore } from '../store/useAuthStore';
+import { AdminNavbar } from '../components/AdminNavbar';
+import { AlertTriangle, Check, X, Shield, Activity, Terminal } from 'lucide-react';
+import { toast } from '../components/ui/Toast';
 
-interface AdminRequest {
-  id: string;
-  user_id: string;
-  status: string;
-  requested_at: string;
-  profiles: { full_name: string | null; email: string | null; role: string } | null;
-}
+type TabType = 'CMD_CENTER' | 'ACTIVE_RESCUES' | 'NETWORK_NODES' | 'ACCESS_LOGS' | 'INVITE_ADMIN' | 'AUDIT_TRAIL';
 
-interface RescueApp {
-  id: string;
-  volunteerId: string;
-  incidentId: string;
-  status: string;
-  details: { name: string; phone: string; city: string };
-  createdAt: string;
-}
+const TABS: TabType[] = ['CMD_CENTER', 'ACTIVE_RESCUES', 'NETWORK_NODES', 'ACCESS_LOGS', 'INVITE_ADMIN', 'AUDIT_TRAIL'];
 
+const MOCK_ACCESS_LOGS = [
+  { id: 1, time: '2026-06-02T16:55:01Z', user: 'system_auth', ip: '192.168.1.104', status: 'GRANTED', location: 'NODE_ALPHA' },
+  { id: 2, time: '2026-06-02T16:42:12Z', user: 'admin_kshitij', ip: '10.0.4.22', status: 'GRANTED', location: 'HQ_SECURE' },
+  { id: 3, time: '2026-06-02T16:15:33Z', user: 'unknown', ip: '45.22.11.9', status: 'DENIED', location: 'EXTERNAL' },
+  { id: 4, time: '2026-06-02T15:30:00Z', user: 'vol_divya', ip: '172.16.0.5', status: 'GRANTED', location: 'FIELD_OP' },
+];
 
-const SEV_COLORS: Record<string, string> = {
-  critical: 'var(--accent-red)', high: 'var(--accent-orange)', medium: '#F59E0B', low: 'var(--text-muted)', resolved: 'var(--accent-green)',
-};
-
-function KpiCard({ icon, value, label, trend }: { icon: string; value: string | number; label: string; trend?: string }) {
-  return (
-    <div className="glass-card-elevated" style={{ padding: 20, flex: 1, minWidth: 130 }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 36, color: 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
-      <div className="label-caps" style={{ marginTop: 8 }}>{label}</div>
-      {trend && <div style={{ fontSize: 11, color: 'var(--accent-green)', marginTop: 4, fontFamily: 'DM Sans' }}>{trend}</div>}
-    </div>
-  );
-}
-
-function DonutChart({ pct, color, label }: { pct: number; color: string; label: string }) {
-  const r = 36;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (pct / 100) * circ;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <svg width="90" height="90" viewBox="0 0 90 90">
-        <circle cx="45" cy="45" r={r} fill="none" stroke="var(--text-dim)" strokeWidth="6" />
-        <circle cx="45" cy="45" r={r} fill="none" stroke={color} strokeWidth="6" strokeDasharray={`${circ}`} strokeDashoffset={offset} strokeLinecap="round" transform="rotate(-90 45 45)" style={{ transition: 'stroke-dashoffset 1.5s ease' }} />
-        <text x="45" y="52" textAnchor="middle" fill="var(--text-primary)" fontFamily="Playfair Display" fontStyle="italic" fontSize="16">{pct}%</text>
-      </svg>
-      <span className="label-caps">{label}</span>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const MAP: Record<string, { cls: string; label: string }> = {
-    pending: { cls: 'badge-medium', label: 'Pending' },
-    verified: { cls: 'badge-live', label: 'Verified' },
-    dispatched: { cls: 'badge-high', label: 'Dispatched' },
-    resolved: { cls: 'badge-resolved', label: 'Resolved' },
-  };
-  const cfg = MAP[status] || { cls: 'badge-low', label: status };
-  return <span className={cfg.cls}>{cfg.label}</span>;
-}
-
-const STATUS_OPTS = ['pending', 'verified', 'dispatched', 'resolved'];
+const MOCK_AUDIT = [
+  { id: 1, time: '2026-06-02T16:50:00Z', action: 'RLS_POLICY_UPDATE', entity: 'public.profiles', by: 'admin_kshitij' },
+  { id: 2, time: '2026-06-02T16:45:22Z', action: 'STATUS_CHANGE', entity: 'RSQ-010', by: 'system_auto' },
+  { id: 3, time: '2026-06-02T16:30:11Z', action: 'VOLUNTEER_DISPATCH', entity: 'RSQ-001 -> b787634d', by: 'admin_kshitij' },
+];
 
 export default function AdminPage() {
-  const { incidents, updateIncidentStatus } = useAppStore();
-  const { user } = useAuthStore();
-  const [feed, setFeed] = useState(ACTIVITY_FEED_TEMPLATES);
-  const [editing, setEditing] = useState<string | null>(null);
-  const feedRef = useRef<HTMLDivElement>(null);
-  const [adminRequests, setAdminRequests] = useState<AdminRequest[]>([]);
-  const [rescueApps, setRescueApps] = useState<RescueApp[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>('ACTIVE_RESCUES');
+  const [volunteerApps, setVolunteerApps] = useState<any[]>([]);
+  const [volunteers, setVolunteers] = useState<any[]>([]);
+  const [appsError, setAppsError] = useState<string | null>(null);
+  const [volsError, setVolsError] = useState<string | null>(null);
   const [processingReq, setProcessingReq] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
 
-  // Fetch pending admin requests
+  // Parse URL search params
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchRequests = async () => {
-      const { data } = await supabase
-        .from('admin_requests')
-        .select('*, profiles(full_name, email, role)')
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'volunteers') setActiveTab('NETWORK_NODES');
+    else if (tab === 'requests') setActiveTab('ACTIVE_RESCUES');
+    else if (tab === 'logs') setActiveTab('ACCESS_LOGS');
+  }, [location.search]);
+
+  const updateUrl = (tab: TabType) => {
+    setActiveTab(tab);
+    if (tab === 'NETWORK_NODES') navigate('/admin?tab=volunteers', { replace: true });
+    else if (tab === 'ACTIVE_RESCUES') navigate('/admin?tab=requests', { replace: true });
+    else if (tab === 'ACCESS_LOGS') navigate('/admin?tab=logs', { replace: true });
+    else navigate('/admin', { replace: true });
+  };
+
+  // Real-time Fetching
+  useEffect(() => {
+    const fetchApplications = async () => {
+      const { data, error } = await supabase
+        .from('volunteer_applications')
+        .select('id, incident_id, status, applied_at, profiles(id, full_name, email)')
         .eq('status', 'pending')
-        .order('requested_at', { ascending: false });
-      if (data) setAdminRequests(data as AdminRequest[]);
+        .order('applied_at', { ascending: false });
+      if (error) setAppsError(error.message);
+      else setVolunteerApps(data || []);
     };
-    fetchRequests();
-  }, [user]);
 
-  // Fetch real-time disasters
-  useEffect(() => {
-    async function fetchDisasters() {
-      try {
-        const res = await fetch("http://localhost:5000/api/disasters");
-        const data = await res.json();
-        useAppStore.setState({ incidents: data });
-      } catch (err) {
-        console.error("Error fetching disasters in admin command center:", err);
-      }
-    }
+    const fetchVolunteers = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'volunteer');
+      if (error) setVolsError(error.message);
+      else setVolunteers(data || []);
+    };
 
-    if (incidents.length === 0) {
-      fetchDisasters();
-    }
-  }, []);
+    fetchApplications();
+    fetchVolunteers();
 
-  // Fetch rescue applications
-  useEffect(() => {
-    async function fetchApps() {
-      try {
-        const res = await fetch("http://localhost:5000/api/rescue-applications");
-        const data = await res.json();
-        setRescueApps(data);
-      } catch (err) {}
-    }
-    fetchApps();
-    const t = setInterval(fetchApps, 15000);
-    return () => clearInterval(t);
+    // Setup Supabase Realtime Subscriptions
+    const appsChannel = supabase.channel('volunteer_applications_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'volunteer_applications' }, () => {
+        fetchApplications();
+      })
+      .subscribe();
+
+    const profilesChannel = supabase.channel('profiles_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchVolunteers();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appsChannel);
+      supabase.removeChannel(profilesChannel);
+    };
   }, []);
 
   const handleRescueApp = async (appId: string, status: 'approved' | 'rejected') => {
     setProcessingReq(appId);
     try {
-      await fetch(`http://localhost:5000/api/rescue-applications/${appId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      setRescueApps(r => r.map(x => x.id === appId ? { ...x, status } : x));
-    } catch {}
-    setProcessingReq(null);
-  };
-
-  const handleApproval = async (reqId: string, userId: string, approve: boolean) => {
-    setProcessingReq(reqId);
-    if (approve) {
-      await supabase.from('profiles').update({ role: 'admin', admin_approved: true }).eq('id', userId);
+      await supabase.from('volunteer_applications').update({ status }).eq('id', appId);
+      toast.success(`Application ${status} successfully.`);
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
     }
-    await supabase.from('admin_requests').update({
-      status: approve ? 'approved' : 'rejected',
-      reviewed_by: user?.id,
-      reviewed_at: new Date().toISOString(),
-    }).eq('id', reqId);
-    setAdminRequests(r => r.filter(x => x.id !== reqId));
     setProcessingReq(null);
   };
 
-  // Simulate live feed entries at intervals
-  useEffect(() => {
-    const msgs = [
-      '⚡ AI model flagged RSQ-010 for escalation — M5.4 aftershock',
-      '🟢 Volunteer Ankita Roy accepted task RSQ-009',
-      '📡 USGS stream: 3 micro-seismic events in last 10 min',
-    ];
-    let idx = 0;
-    const timer = setInterval(() => {
-      setFeed(f => [
-        { id: `live-${Date.now()}`, type: 'data', message: msgs[idx % msgs.length], timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) },
-        ...f.slice(0, 9),
-      ]);
-      idx++;
-    }, 7000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const total = incidents.length;
-  const critical = incidents.filter(i => i.severity === 'critical');
-  const resolved = incidents.filter(i => i.status === 'resolved');
-  const dispatched = incidents.filter(i => i.status === 'dispatched');
+  const handleInviteAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail || !inviteEmail.includes('@')) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
+    setProcessingReq('invite');
+    
+    try {
+      await supabase.from('admin_requests').insert({
+        status: 'invited',
+        requested_at: new Date().toISOString()
+      });
+      toast.success(`Admin invitation dispatched to ${inviteEmail}`);
+      setInviteEmail('');
+    } catch (err) {
+      toast.error('Failed to send invitation.');
+    }
+    
+    setProcessingReq(null);
+  };
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
-      <Navbar />
-      <div style={{ paddingTop: 100, paddingLeft: 'clamp(24px,4vw,48px)', paddingRight: 'clamp(24px,4vw,48px)', paddingBottom: 80 }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <h1 style={{ fontFamily: 'Playfair Display', fontStyle: 'italic', fontSize: 'clamp(40px,6vw,80px)', color: 'var(--text-primary)', margin: 0, lineHeight: 1 }}>command</h1>
-            <div style={{ fontFamily: 'DM Sans', fontWeight: 300, fontSize: 'clamp(32px,4vw,56px)', color: 'var(--text-muted)', lineHeight: 1 }}>center</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-green)', animation: 'pulse-dot 2s infinite' }} />
-            <span className="label-caps" style={{ color: 'var(--accent-green)' }}>All Systems Nominal</span>
-          </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#040508',
+      backgroundImage: `
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+      `,
+      backgroundSize: '40px 40px',
+      color: '#e2e8f0',
+      position: 'relative'
+    }}>
+      <AdminNavbar />
+
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 32px' }}>
+        
+        {/* Terminal Sub-navigation */}
+        <div style={{
+          display: 'flex', gap: 40, borderBottom: '1px solid #1a1e24',
+          overflowX: 'auto', paddingTop: 32, paddingBottom: 0
+        }}>
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              onClick={() => updateUrl(tab)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid #d4af37' : '2px solid transparent',
+                color: activeTab === tab ? '#d4af37' : '#475569',
+                fontFamily: 'JetBrains Mono',
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                padding: '0 0 16px 0',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              [{tab}]
+            </button>
+          ))}
         </div>
 
-        {/* KPI row */}
-        <div className="kpi-row" style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
-          <KpiCard icon="🚨" value={total} label="Total Incidents" trend="+2 this hour" />
-          <KpiCard icon="🔴" value={critical.length} label="Critical Active" />
-          <KpiCard icon="⚡" value={dispatched.length} label="Dispatched" trend="4 en route" />
-          <KpiCard icon="✅" value={resolved.length} label="Resolved" trend="+1 today" />
-          <KpiCard icon="👥" value="4" label="Volunteers Available" />
-          <KpiCard icon="⏱️" value="4.2m" label="Avg Response" trend="↓ from 5.1m" />
+        {/* Header Section */}
+        <div style={{ padding: '60px 0 40px', borderBottom: '1px solid #1a1e24' }}>
+          <h1 style={{
+            fontFamily: 'Playfair Display', fontStyle: 'italic',
+            fontSize: 64, fontWeight: 700, color: '#fff', margin: 0,
+            letterSpacing: '-0.02em', display: 'flex', alignItems: 'baseline', gap: 12
+          }}>
+            Operations.
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00D4FF', display: 'inline-block' }} />
+          </h1>
         </div>
 
-        {/* Main content */}
-        <div className="admin-grid" style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-          {/* Left: Incident table */}
-          <div style={{ flex: '0 0 62%', minWidth: 0 }}>
-            <div className="glass-card-elevated" style={{ overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-caps">INCIDENT QUEUE</span>
-                <span className="badge-live" style={{ animation: 'pulse-dot 2s infinite' }}>● LIVE</span>
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                      {['ID', 'Incident', 'Location', 'Severity', 'Status', 'Affected'].map(h => (
-                        <th key={h} style={{ padding: '8px 16px', fontFamily: 'DM Sans', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {incidents.map((inc) => (
-                      <motion.tr key={inc.id} layout
-                        style={{ borderBottom: '1px solid var(--glass-border)', cursor: 'pointer', transition: 'background 0.15s ease' }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                      >
-                        <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{inc.id}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 4, height: 36, borderRadius: 2, background: SEV_COLORS[inc.severity], flexShrink: 0 }} />
-                            <span style={{ fontFamily: 'DM Sans', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                              {TYPE_EMOJIS[inc.type]} {inc.title.split('—')[0].trim()}
-                            </span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px 16px', fontFamily: 'DM Sans', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{inc.state}</td>
-                        <td style={{ padding: '12px 16px' }}><span className={`badge-${inc.severity}`}>{inc.severity}</span></td>
-                        <td style={{ padding: '12px 16px' }}>
-                          {editing === inc.id ? (
-                            <select
-                              value={inc.status}
-                              onChange={(e) => { updateIncidentStatus(inc.id, e.target.value as any); setEditing(null); }}
-                              onBlur={() => setEditing(null)}
-                              autoFocus
-                              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--glass-border)', borderRadius: 6, padding: '4px 8px', color: 'var(--text-primary)', fontFamily: 'DM Sans', fontSize: 11, cursor: 'pointer' }}
-                            >
-                              {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                          ) : (
-                            <div onClick={() => setEditing(inc.id)} style={{ cursor: 'pointer' }}>
-                              <StatusBadge status={inc.status} />
-                              <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 4 }}>✎</span>
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontFamily: 'JetBrains Mono', fontSize: 12, color: 'var(--accent-orange)', whiteSpace: 'nowrap' }}>👥 {(inc.peopleAffected ?? 0).toLocaleString()}</td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        {/* Content Area */}
+        <div style={{ padding: '40px 0' }}>
+          
+          <AnimatePresence mode="wait">
+            {activeTab === 'ACTIVE_RESCUES' && (
+              <motion.div
+                key="rescues"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <h2 style={{
+                  fontFamily: 'DM Sans', fontSize: 18, color: '#d4af37',
+                  fontWeight: 500, margin: '0 0 40px 0'
+                }}>
+                  Volunteer Rescue Applications
+                </h2>
 
-            {/* Donut charts */}
-            <div className="glass-card" style={{ padding: 24, marginTop: 24, display: 'flex', gap: 32, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <DonutChart pct={Math.round((critical.length / total) * 100)} color="var(--accent-red)" label="Critical" />
-              <DonutChart pct={Math.round((dispatched.length / total) * 100)} color="var(--accent-orange)" label="Active" />
-              <DonutChart pct={Math.round((resolved.length / total) * 100)} color="var(--accent-green)" label="Resolved" />
-              <DonutChart pct={87} color="var(--accent-cyan)" label="AI Accuracy" />
-            </div>
-          </div>
+                {appsError ? (
+                  <p style={{ fontFamily: 'JetBrains Mono', fontSize: 13, color: '#ef4444' }}>
+                    [DB_ERROR] {appsError}
+                  </p>
+                ) : volunteerApps.length === 0 ? (
+                  <p style={{ fontFamily: 'JetBrains Mono', fontSize: 13, color: '#475569' }}>
+                    No volunteer applications pending.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#1a1e24' }}>
+                    {/* Table Header */}
+                    <div style={{
+                      display: 'grid', gridTemplateColumns: '1fr 1fr 2fr 1fr 100px', gap: 16,
+                      background: '#040508', padding: '16px 0',
+                      fontFamily: 'JetBrains Mono', fontSize: 11, color: '#8892b0', textTransform: 'uppercase'
+                    }}>
+                      <div>Ref ID</div>
+                      <div>Incident</div>
+                      <div>Volunteer</div>
+                      <div>Time</div>
+                      <div style={{ textAlign: 'right' }}>Actions</div>
+                    </div>
 
-          {/* Right: Live activity feed */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="glass-card-elevated" style={{ height: 520, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-caps">LIVE ACTIVITY</span>
-                <span className="badge-live" style={{ animation: 'pulse-dot 2s infinite' }}>● LIVE</span>
-              </div>
-              <div ref={feedRef} style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {feed.map((entry) => (
-                  <motion.div
-                    key={entry.id}
-                    layout
-                    initial={{ opacity: 0, y: -16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ padding: '10px 12px', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: 10 }}
-                  >
-                    <p style={{ fontFamily: 'DM Sans', fontSize: 12, color: 'var(--text-primary)', margin: '0 0 4px', lineHeight: 1.4 }}>{entry.message}</p>
-                    <span style={{ fontFamily: 'JetBrains Mono', fontSize: 10, color: 'var(--text-dim)' }}>{entry.timestamp}</span>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Rescue Applications */}
-        {rescueApps.filter(a => a.status === 'pending').length > 0 && (
-          <div style={{ marginTop: 32 }}>
-            <div className="glass-card-elevated" style={{ overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-caps">Rescue Mission Applications</span>
-                <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, padding: '3px 10px', borderRadius: 999, background: 'rgba(0,212,255,0.1)', color: 'var(--accent-cyan)', border: '1px solid rgba(0,212,255,0.2)' }}>{rescueApps.filter(a => a.status === 'pending').length} pending</span>
-              </div>
-              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {rescueApps.filter(a => a.status === 'pending').map(app => {
-                  const inc = incidents.find(i => i.id === app.incidentId);
-                  return (
-                    <div key={app.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: 12, gap: 16 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--accent-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 14, color: 'var(--bg)' }}>
-                            {app.details?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'V'}
-                          </span>
+                    {/* Rows */}
+                    {volunteerApps.map((app: any) => (
+                      <div key={app.id} style={{
+                        display: 'grid', gridTemplateColumns: '1fr 1fr 2fr 1fr 100px', gap: 16, alignItems: 'center',
+                        background: '#040508', padding: '16px 0', borderBottom: '1px solid #1a1e24',
+                        fontFamily: 'DM Sans', fontSize: 14, color: '#e2e8f0'
+                      }}>
+                        <div style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#64748b' }}>
+                          {app.id.split('-')[0]}
+                        </div>
+                        <div style={{ color: '#00D4FF', fontFamily: 'JetBrains Mono', fontSize: 13 }}>
+                          {app.incident_id}
                         </div>
                         <div>
-                          <p style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{app.details?.name || 'Volunteer'} <span style={{ fontFamily: 'DM Sans', fontSize: 12, color: 'var(--text-muted)' }}>wants to join</span></p>
-                          <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-dim)', margin: '3px 0 0' }}>Incident: {inc ? `${inc.title.split('—')[0].trim()} (${inc.state})` : app.incidentId}</p>
+                          <div style={{ fontWeight: 600 }}>{app.profiles?.full_name || app.volunteerName || 'Unknown User'}</div>
+                          <div style={{ fontSize: 12, color: '#64748b' }}>{app.profiles?.email || 'N/A'}</div>
+                        </div>
+                        <div style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#64748b' }}>
+                          {app.applied_at ? new Date(app.applied_at).toLocaleTimeString() : '12:00 PM'}
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => handleRescueApp(app.id, 'approved')}
+                            disabled={processingReq === app.id}
+                            style={{
+                              width: 32, height: 32, borderRadius: 0,
+                              background: 'transparent', border: '1px solid #22c55e', color: '#22c55e',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                            }}
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleRescueApp(app.id, 'rejected')}
+                            disabled={processingReq === app.id}
+                            style={{
+                              width: 32, height: 32, borderRadius: 0,
+                              background: 'transparent', border: '1px solid #ef4444', color: '#ef4444',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                            }}
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-                        <button
-                          onClick={() => handleRescueApp(app.id, 'approved')}
-                          disabled={processingReq === app.id}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(0,230,118,0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-                        >
-                          <Check size={14} /> Approve Dispatch
-                        </button>
-                        <button
-                          onClick={() => handleRescueApp(app.id, 'rejected')}
-                          disabled={processingReq === app.id}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(255,45,45,0.08)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-                        >
-                          <X size={14} /> Reject
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
 
-        {/* Admin Approval Queue */}
-        {adminRequests.length > 0 && (
-          <div style={{ marginTop: 32 }}>
-            <div className="glass-card-elevated" style={{ overflow: 'hidden' }}>
-              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="label-caps">Admin Access Requests</span>
-                <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11, padding: '3px 10px', borderRadius: 999, background: 'rgba(200,169,110,0.1)', color: 'var(--accent-gold)', border: '1px solid rgba(200,169,110,0.2)' }}>{adminRequests.length} pending</span>
-              </div>
-              <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {adminRequests.map(req => (
-                  <div key={req.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: 12, gap: 16 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontFamily: 'DM Sans', fontWeight: 700, fontSize: 14, color: 'var(--bg)' }}>
-                          {req.profiles?.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || '??'}
-                        </span>
+            {activeTab === 'NETWORK_NODES' && (
+              <motion.div
+                key="nodes"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <h2 style={{
+                  fontFamily: 'DM Sans', fontSize: 18, color: '#d4af37',
+                  fontWeight: 500, margin: '0 0 40px 0'
+                }}>
+                  Network Nodes (Active Volunteers)
+                </h2>
+
+                {volsError ? (
+                  <p style={{ fontFamily: 'JetBrains Mono', fontSize: 13, color: '#ef4444' }}>
+                    [DB_ERROR] {volsError}
+                  </p>
+                ) : volunteers.length === 0 ? (
+                  <p style={{ fontFamily: 'JetBrains Mono', fontSize: 13, color: '#475569' }}>
+                    No registered volunteers found on the network.
+                    <br /><br />
+                    <span style={{ color: '#ef4444' }}>[ERR] Connection refused or RLS policy active. Run fix_profiles_rls.sql.</span>
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
+                    {volunteers.map((vol: any) => (
+                      <div key={vol.id} style={{
+                        padding: 24, border: '1px solid #1a1e24', background: 'rgba(4,5,8,0.8)',
+                        display: 'flex', flexDirection: 'column', gap: 16
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontFamily: 'DM Sans', fontSize: 16, fontWeight: 600, color: '#fff' }}>
+                              {vol.full_name || vol.name}
+                            </div>
+                            <div style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                              ID: {vol.id.split('-')[0]}
+                            </div>
+                          </div>
+                          <div style={{
+                            width: 8, height: 8, borderRadius: '50%', background: '#22c55e',
+                            boxShadow: '0 0 10px #22c55e'
+                          }} />
+                        </div>
+                        
+                        <div style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#cbd5e1' }}>
+                          {vol.email}
+                        </div>
+
+                        {vol.skills && vol.skills.length > 0 && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 'auto' }}>
+                            {vol.skills.map((skill: string) => (
+                              <span key={skill} style={{
+                                padding: '2px 8px', border: '1px solid #334155', color: '#94a3b8',
+                                fontFamily: 'JetBrains Mono', fontSize: 10, textTransform: 'uppercase'
+                              }}>
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <p style={{ fontFamily: 'DM Sans', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)', margin: 0 }}>{req.profiles?.full_name || 'Unknown'}</p>
-                        <p style={{ fontFamily: 'JetBrains Mono', fontSize: 11, color: 'var(--text-muted)', margin: '3px 0 0' }}>{req.profiles?.email} · <span style={{ textTransform: 'capitalize' }}>{req.profiles?.role || 'citizen'}</span></p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
-                      <button
-                        onClick={() => handleApproval(req.id, req.user_id, true)}
-                        disabled={processingReq === req.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(0,230,118,0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-                      >
-                        <Check size={14} /> Approve
-                      </button>
-                      <button
-                        onClick={() => handleApproval(req.id, req.user_id, false)}
-                        disabled={processingReq === req.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'rgba(255,45,45,0.08)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', fontFamily: 'DM Sans', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-                      >
-                        <X size={14} /> Reject
-                      </button>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === 'CMD_CENTER' && (
+              <motion.div key="cmd" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <h2 style={{ fontFamily: 'DM Sans', fontSize: 18, color: '#d4af37', fontWeight: 500, margin: '0 0 40px 0' }}>System Overview</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
+                  <div style={{ padding: 24, border: '1px solid #1a1e24', background: '#040508' }}>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#64748b', marginBottom: 16 }}>SYSTEM_STATUS</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#22c55e', fontFamily: 'JetBrains Mono', fontSize: 24 }}>
+                      <Activity size={24} /> OPTIMAL
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+                  <div style={{ padding: 24, border: '1px solid #1a1e24', background: '#040508' }}>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#64748b', marginBottom: 16 }}>ACTIVE_CONNECTIONS</div>
+                    <div style={{ color: '#fff', fontFamily: 'JetBrains Mono', fontSize: 24 }}>1,024</div>
+                  </div>
+                  <div style={{ padding: 24, border: '1px solid #1a1e24', background: '#040508' }}>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#64748b', marginBottom: 16 }}>THREAT_LEVEL</div>
+                    <div style={{ color: '#d4af37', fontFamily: 'JetBrains Mono', fontSize: 24 }}>ELEVATED</div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'ACCESS_LOGS' && (
+              <motion.div key="logs" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <h2 style={{ fontFamily: 'DM Sans', fontSize: 18, color: '#d4af37', fontWeight: 500, margin: '0 0 40px 0' }}>Access Logs</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#1a1e24' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 16, background: '#040508', padding: '16px', fontFamily: 'JetBrains Mono', fontSize: 11, color: '#8892b0' }}>
+                    <div>TIMESTAMP</div><div>USER</div><div>IP_ADDR</div><div>LOCATION</div><div>STATUS</div>
+                  </div>
+                  {MOCK_ACCESS_LOGS.map(log => (
+                    <div key={log.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr', gap: 16, background: '#040508', padding: '16px', fontFamily: 'JetBrains Mono', fontSize: 12, color: '#e2e8f0', borderBottom: '1px solid #1a1e24' }}>
+                      <div style={{ color: '#64748b' }}>{log.time}</div>
+                      <div>{log.user}</div>
+                      <div style={{ color: '#00D4FF' }}>{log.ip}</div>
+                      <div>{log.location}</div>
+                      <div style={{ color: log.status === 'GRANTED' ? '#22c55e' : '#ef4444' }}>[{log.status}]</div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'AUDIT_TRAIL' && (
+              <motion.div key="audit" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <h2 style={{ fontFamily: 'DM Sans', fontSize: 18, color: '#d4af37', fontWeight: 500, margin: '0 0 40px 0' }}>Audit Trail</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#1a1e24' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, background: '#040508', padding: '16px', fontFamily: 'JetBrains Mono', fontSize: 11, color: '#8892b0' }}>
+                    <div>TIMESTAMP</div><div>ACTION</div><div>ENTITY</div><div>EXECUTED_BY</div>
+                  </div>
+                  {MOCK_AUDIT.map(log => (
+                    <div key={log.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, background: '#040508', padding: '16px', fontFamily: 'JetBrains Mono', fontSize: 12, color: '#e2e8f0', borderBottom: '1px solid #1a1e24' }}>
+                      <div style={{ color: '#64748b' }}>{log.time}</div>
+                      <div style={{ color: '#d4af37' }}>{log.action}</div>
+                      <div>{log.entity}</div>
+                      <div style={{ color: '#00D4FF' }}>{log.by}</div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'INVITE_ADMIN' && (
+              <motion.div key="invite" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                <h2 style={{ fontFamily: 'DM Sans', fontSize: 18, color: '#d4af37', fontWeight: 500, margin: '0 0 40px 0' }}>Grant Admin Access</h2>
+                <div style={{ maxWidth: 600, padding: 32, border: '1px solid #1a1e24', background: '#040508' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, color: '#e2e8f0' }}>
+                    <Shield size={24} color="#d4af37" />
+                    <span style={{ fontFamily: 'JetBrains Mono', fontSize: 14 }}>AUTHORIZATION_REQUIRED</span>
+                  </div>
+                  <p style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>
+                    Enter the email address of the operative you wish to elevate to Level 4 (Admin) clearance. 
+                    An encrypted invitation link will be dispatched via secure channels.
+                  </p>
+                  <form onSubmit={handleInviteAdmin} style={{ display: 'flex', gap: 16 }}>
+                    <input
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="operative@resq.ai"
+                      style={{
+                        flex: 1, background: 'transparent', border: '1px solid #1a1e24',
+                        padding: '12px 16px', color: '#fff', fontFamily: 'JetBrains Mono', fontSize: 14,
+                        outline: 'none'
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={processingReq === 'invite'}
+                      style={{
+                        background: '#d4af37', color: '#000', border: 'none', padding: '0 24px',
+                        fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 8
+                      }}
+                    >
+                      <Terminal size={16} />
+                      {processingReq === 'invite' ? 'SENDING...' : 'DISPATCH'}
+                    </button>
+                  </form>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
       </div>
+
+      {/* Floating SOS button */}
+      <button style={{
+        position: 'fixed', bottom: 40, right: 40,
+        width: 64, height: 64, borderRadius: '50%',
+        background: '#ef4444', border: '2px solid #fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', cursor: 'pointer',
+        boxShadow: '0 0 40px rgba(239, 68, 68, 0.4)',
+        zIndex: 100
+      }}>
+        <AlertTriangle size={24} strokeWidth={2.5} />
+      </button>
+
     </div>
   );
 }
